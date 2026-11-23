@@ -16,13 +16,15 @@ qits-maintenance's bumps — never by hand.
 
 ## Layout
 
-- `domain/` — entities (`entity`), the agent reads and writes and the roster reconcile
-  (`control`), the published event (`events`). Owns the `agents` datasource, persistence unit and
-  the Flyway lineage at `db/agents/migration` (schema `agents`). `control/ProjectDirectory` and
+- `domain/` — entities (`entity`), the agent reads and writes, the roster reconcile and the
+  claims and turns from qits-projects' events (`control`: `Assignments`, `CommentNotices`), the
+  published event and the consumer copies of `EntityAssigned` and `EntityCommented` (`events`).
+  Owns the `agents` datasource, persistence unit and the Flyway lineage at `db/agents/migration`
+  (schema `agents`). `control/ProjectDirectory` and
   `control/AgentCredentials` are the reconcile's two outbound dependencies, as interfaces.
-- `service/` — the deployable: the REST surface (`api`), the qits-projects client behind
-  `ProjectDirectory` (`projects`), the qits-idp client behind `AgentCredentials` (`idp`), the
-  periodic reconcile (`reconcile`), and every database-backed test.
+- `service/` — the deployable: the REST surface (`api`), the two durable listeners (`bus`), the
+  qits-projects client behind `ProjectDirectory` (`projects`), the qits-idp client behind
+  `AgentCredentials` (`idp`), the periodic reconcile (`reconcile`), and every database-backed test.
 - **Reserved**: `eu.wohlben.qits.agents.runtime` (qits-2519's leases and specs). It reads agents
   through `control/Agents` (`running()`, `byId()`) and never publishes `ProjectAgentChanged` itself.
 
@@ -31,6 +33,12 @@ qits-maintenance's bumps — never by hand.
 - **Agent rows are read and written through `control/Agents`**, and `ProjectAgentChanged` is
   published from its one private `changed` method, inside the write transaction, after the flush.
   No payload field may be called `name` (it is `QitsEvent.name()`): the agent's is `agentName`.
+- **The listeners are thin**: decode with `CanonicalJson.payloadTo`, hand to `control`, WARN and
+  return on a payload that will not bind (poison), let a database failure throw (the event stays
+  owed). Their `consumerId`s (`agents-assignments`, `agents-comments`) are storage keys: never
+  rename them. Every listener is passed to `EventstreamPactTest`, every consumed record is listed in
+  `api/ApiWireReflection`. Redelivery is idempotent by a read first, never by catching the unique
+  index's violation (which would poison the claiming transaction).
 - **The reconcile is idempotent**: an unchanged roster writes nothing, not even `updated_at`
   (`RosterReconcileTest.anUnchangedRosterWritesNothingAtAll`). qits-idp and qits-projects are
   called outside a row's transaction; a failure is retried by the next run.

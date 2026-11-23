@@ -1,0 +1,292 @@
+package eu.wohlben.qits.agents.service.bus;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
+import eu.wohlben.qits.agents.service.control.Agents;
+import eu.wohlben.qits.agents.service.entity.AgentClaim;
+import eu.wohlben.qits.agents.service.entity.AgentTurn;
+import eu.wohlben.qits.agents.service.entity.TurnKind;
+import eu.wohlben.qits.agents.service.support.Fixtures;
+import eu.wohlben.qits.eventstream.control.CanonicalJson;
+import eu.wohlben.qits.eventstream.control.EventFrame;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Claims and turns from qits-projects' events, driven through the two durable listeners with frames
+ * shaped as qits-projects publishes them (plus a field this copy does not know). The listeners are
+ * called directly, without the library's claim on the event, so a redelivery here proves the
+ * appliers' own idempotency.
+ */
+@QuarkusTest
+class ClaimsAndTurnsFromEventsTest {
+
+  static final UUID DEVELOPER = UUID.fromString("d0000000-0000-4000-8000-000000000001");
+  static final UUID REVIEWER = UUID.fromString("d0000000-0000-4000-8000-000000000002");
+  static final UUID EPIC = UUID.fromString("e0000000-0000-4000-8000-000000000001");
+  static final UUID TASK = UUID.fromString("e0000000-0000-4000-8000-000000000002");
+  static final Instant AT = Instant.parse("2026-11-23T10:00:00.123456Z");
+  static final String DEVELOPER_SUBJECT = Fixtures.subject(Fixtures.PROJECT, "developer");
+
+  @Inject AssignmentListener assignments;
+
+  @Inject CommentListener comments;
+
+  @Inject Agents agents;
+
+  @Inject Fixtures fixtures;
+
+  @BeforeEach
+  void arrange() {
+    fixtures.clear();
+    Fixtures.recordEvents();
+    fixtures.agent(DEVELOPER, "developer", 3);
+    fixtures.agent(REVIEWER, "reviewer", 1);
+  }
+
+  // --- frames ----------------------------------------------------------------------------------
+
+  static EventFrame assigned(
+      UUID eventId, String assignee, String previous, String changedBy, String changedByName) {
+    Map<String, Object> p = new LinkedHashMap<>();
+    p.put("eventId", eventId.toString());
+    p.put("entityId", EPIC.toString());
+    p.put("projectId", Fixtures.PROJECT_ID.toString());
+    p.put("archetype", "EPIC");
+    p.put("number", 2518);
+    p.put("qualifiedId", "qits-2518");
+    p.put("title", "Project agents");
+    p.put("status", "IMPLEMENTING");
+    p.put("assignee", assignee);
+    p.put("previousAssignee", previous);
+    p.put("claimed", assignee != null);
+    p.put("changedBy", changedBy);
+    p.put("changedByName", changedByName);
+    p.put("assignedAt", AT.toString());
+    p.put("aFieldFromTheFuture", "ignored");
+    return frame(eventId, "EntityAssigned", p);
+  }
+
+  static EventFrame commented(
+      UUID eventId, String author, String authorName, String authorAgentOf, String changedBy) {
+    Map<String, Object> p = new LinkedHashMap<>();
+    p.put("eventId", eventId.toString());
+    p.put("commentId", UUID.randomUUID().toString());
+    p.put("entityId", TASK.toString());
+    p.put("rootEntityId", EPIC.toString());
+    p.put("projectId", Fixtures.PROJECT_ID.toString());
+    p.put("archetype", "TASK");
+    p.put("number", 2579);
+    p.put("title", "Claims and turns");
+    p.put("author", author);
+    p.put("authorName", authorName);
+    p.put("authorAgentOf", authorAgentOf);
+    p.put("changedBy", changedBy);
+    p.put("mentions", List.of());
+    p.put("commentedAt", AT.plusSeconds(60).toString());
+    p.put("aFieldFromTheFuture", 7);
+    return frame(eventId, "EntityCommented", p);
+  }
+
+  static EventFrame frame(UUID eventId, String name, Map<String, Object> payload) {
+    return new EventFrame(
+        eventId.toString(), name, AT, CanonicalJson.canonicalize(payload), null, null, "dev");
+  }
+
+  List<AgentClaim> claims(UUID agent) {
+    return agents.claims(agent, true);
+  }
+
+  List<AgentTurn> turns(UUID agent) {
+    return fixtures.turns(agent);
+  }
+
+  // --- EntityAssigned --------------------------------------------------------------------------
+
+  @Test
+  void anAssignmentByAPersonOpensAClaimAndQueuesTheAssignedText() {
+    UUID event = UUID.randomUUID();
+    assignments.onFrame(assigned(event, "developer", null, "person-sub", "Ben"));
+
+    List<AgentClaim> claims = claims(DEVELOPER);
+    assertEquals(1, claims.size());
+    AgentClaim claim = claims.get(0);
+    assertEquals(EPIC, claim.entityId);
+    assertEquals("qits-2518", claim.qualifiedId);
+    assertEquals("EPIC", claim.archetype);
+    assertEquals("Project agents", claim.title);
+    assertEquals("person-sub", claim.claimedBy);
+    assertEquals(AT, claim.claimedAt);
+    assertNull(claim.releasedAt);
+
+    List<AgentTurn> turns = turns(DEVELOPER);
+    assertEquals(1, turns.size());
+    assertEquals(TurnKind.ASSIGNED, turns.get(0).kind);
+    assertEquals("(Ben has assigned qits-2518 to you)", turns.get(0).text);
+    assertEquals(event, turns.get(0).sourceEventId);
+    assertEquals(3, turns.get(0).generation);
+    assertEquals(List.of(), claims(REVIEWER));
+  }
+
+  @Test
+  void aSelfAssignmentOpensAClaimWithNoTurn() {
+    assignments.onFrame(
+        assigned(UUID.randomUUID(), "developer", null, DEVELOPER_SUBJECT, "developer"));
+
+    assertEquals(1, claims(DEVELOPER).size());
+    assertEquals(DEVELOPER_SUBJECT, claims(DEVELOPER).get(0).claimedBy);
+    assertEquals(List.of(), turns(DEVELOPER));
+  }
+
+  @Test
+  void theTokenSubjectAsAssigneeAlsoMatches() {
+    assignments.onFrame(
+        assigned(UUID.randomUUID(), DEVELOPER_SUBJECT, null, "person-sub", "Ben"));
+
+    assertEquals(1, claims(DEVELOPER).size());
+    assertEquals(1, turns(DEVELOPER).size());
+  }
+
+  @Test
+  void aReassignmentReleasesTheOldAgentAndOpensTheNew() {
+    assignments.onFrame(assigned(UUID.randomUUID(), "developer", null, "person-sub", "Ben"));
+    UUID move = UUID.randomUUID();
+    Instant later = AT.plusSeconds(3600);
+    EventFrame frame = assigned(move, "reviewer", "developer", "person-two", "Anna");
+    frame =
+        new EventFrame(
+            frame.id(),
+            frame.name(),
+            later,
+            frame.payload().replace(AT.toString(), later.toString()),
+            null,
+            null,
+            "dev");
+    assignments.onFrame(frame);
+
+    AgentClaim released = claims(DEVELOPER).get(0);
+    assertEquals(later, released.releasedAt);
+    assertEquals("person-two", released.releasedBy);
+    assertEquals(1, turns(DEVELOPER).size(), "a release queues nothing");
+
+    assertEquals(1, claims(REVIEWER).size());
+    assertNull(claims(REVIEWER).get(0).releasedAt);
+    assertEquals(later, claims(REVIEWER).get(0).claimedAt);
+    assertEquals("(Anna has assigned qits-2518 to you)", turns(REVIEWER).get(0).text);
+  }
+
+  @Test
+  void clearingTheAssigneeReleases() {
+    assignments.onFrame(assigned(UUID.randomUUID(), "developer", null, "person-sub", "Ben"));
+    assignments.onFrame(assigned(UUID.randomUUID(), null, "developer", "person-sub", "Ben"));
+
+    assertNotNull(claims(DEVELOPER).get(0).releasedAt);
+    assertEquals("person-sub", claims(DEVELOPER).get(0).releasedBy);
+    assertEquals(0, agents.openClaims(DEVELOPER));
+  }
+
+  @Test
+  void aRedeliveredEventChangesNothing() {
+    EventFrame frame = assigned(UUID.randomUUID(), "developer", null, "person-sub", "Ben");
+    assignments.onFrame(frame);
+    assignments.onFrame(frame);
+
+    assertEquals(1, claims(DEVELOPER).size());
+    assertEquals(1, turns(DEVELOPER).size());
+
+    // Even after a later release, the old assignment arriving again does not reopen the claim.
+    assignments.onFrame(assigned(UUID.randomUUID(), null, "developer", "person-sub", "Ben"));
+    assignments.onFrame(frame);
+    assertEquals(1, claims(DEVELOPER).size());
+    assertEquals(0, agents.openClaims(DEVELOPER));
+    assertEquals(1, turns(DEVELOPER).size());
+  }
+
+  @Test
+  void aRetiredAgentGetsNothing() {
+    fixtures.retire(DEVELOPER);
+    assignments.onFrame(assigned(UUID.randomUUID(), "developer", null, "person-sub", "Ben"));
+
+    assertEquals(List.of(), claims(DEVELOPER));
+    assertEquals(List.of(), turns(DEVELOPER));
+  }
+
+  @Test
+  void anUnreadablePayloadIsSettledUnhandled() {
+    assignments.onFrame(
+        new EventFrame(UUID.randomUUID().toString(), "EntityAssigned", AT, "not json", null, null,
+            "dev"));
+    comments.onFrame(
+        new EventFrame(UUID.randomUUID().toString(), "EntityCommented", AT, "[1,2]", null, null,
+            "dev"));
+
+    assertEquals(List.of(), claims(DEVELOPER));
+  }
+
+  // --- EntityCommented -------------------------------------------------------------------------
+
+  @Test
+  void aCommentOnATaskUnderAClaimedEpicQueuesCommentedWithTheEpicsId() {
+    assignments.onFrame(
+        assigned(UUID.randomUUID(), "developer", null, DEVELOPER_SUBJECT, "developer"));
+    UUID event = UUID.randomUUID();
+    comments.onFrame(commented(event, "person-sub", "Ben", null, "person-sub"));
+    comments.onFrame(commented(event, "person-sub", "Ben", null, "person-sub"));
+
+    List<AgentTurn> turns = turns(DEVELOPER);
+    assertEquals(1, turns.size(), "once, redelivered or not");
+    assertEquals(TurnKind.COMMENTED, turns.get(0).kind);
+    assertEquals("(Ben just commented on qits-2518)", turns.get(0).text);
+    assertEquals(event, turns.get(0).sourceEventId);
+    assertEquals(3, turns.get(0).generation);
+    assertEquals(List.of(), turns(REVIEWER), "the reviewer holds nothing");
+  }
+
+  @Test
+  void theAgentsOwnCommentQueuesNothing() {
+    assignments.onFrame(
+        assigned(UUID.randomUUID(), "developer", null, DEVELOPER_SUBJECT, "developer"));
+    comments.onFrame(
+        commented(UUID.randomUUID(), DEVELOPER.toString(), "developer", "qits-2518",
+            DEVELOPER_SUBJECT));
+
+    assertEquals(List.of(), turns(DEVELOPER));
+  }
+
+  @Test
+  void authorAgentOfWinsOverAuthorName() {
+    assignments.onFrame(
+        assigned(UUID.randomUUID(), "developer", null, DEVELOPER_SUBJECT, "developer"));
+    comments.onFrame(
+        commented(UUID.randomUUID(), REVIEWER.toString(), "reviewer", "qits-2600",
+            Fixtures.subject(Fixtures.PROJECT, "reviewer")));
+    comments.onFrame(commented(UUID.randomUUID(), "person-sub", null, null, "person-sub"));
+
+    List<String> texts = turns(DEVELOPER).stream().map(t -> t.text).sorted().toList();
+    assertEquals(
+        List.of(
+            "(person-sub just commented on qits-2518)",
+            "(qits-2600's agent just commented on qits-2518)"),
+        texts,
+        "the agent's work item over its name; the principal when there is no name");
+  }
+
+  @Test
+  void aCommentOnAReleasedItemQueuesNothing() {
+    assignments.onFrame(
+        assigned(UUID.randomUUID(), "developer", null, DEVELOPER_SUBJECT, "developer"));
+    assignments.onFrame(assigned(UUID.randomUUID(), null, "developer", "person-sub", "Ben"));
+    comments.onFrame(commented(UUID.randomUUID(), "person-sub", "Ben", null, "person-sub"));
+
+    assertEquals(List.of(), turns(DEVELOPER));
+  }
+}

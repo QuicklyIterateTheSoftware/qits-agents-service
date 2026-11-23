@@ -1,5 +1,7 @@
 package eu.wohlben.qits.agents.service.api;
 
+import eu.wohlben.qits.agents.service.events.EntityAssigned;
+import eu.wohlben.qits.agents.service.events.EntityCommented;
 import eu.wohlben.qits.agents.service.events.ProjectAgentChanged;
 import eu.wohlben.qits.agents.service.idp.IdpTokensApi;
 import eu.wohlben.qits.agents.service.projects.ProjectsApi;
@@ -9,7 +11,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
 
 /**
  * Native-image reflection registration for every type Jackson touches on this API, for the event
- * the bus serializes and for the outbound clients' bodies and answers. Several of them ride in
+ * the bus serializes, for the consumed events the listeners bind and for the outbound clients' bodies and answers. Several of them ride in
  * {@code Response.entity(...)}, which hides the type from the build-time analysis: in the native
  * binary that is a 500 behind a green JVM suite.
  *
@@ -28,6 +30,10 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
       AgentsWire.MeDto.class,
       AgentsWire.ErrorBody.class,
       ProjectAgentChanged.class,
+      // The qits-projects events the durable listeners bind with CanonicalJson.payloadTo: not
+      // QitsEvents, so the library's own registration does not reach them.
+      EntityAssigned.class,
+      EntityCommented.class,
       // qits-eventstream serializes with its own ObjectMapper, so nothing registers its PUT body or
       // the frames it reads for us: without these the native image publishes nothing, silently.
       EventEnvelope.class,

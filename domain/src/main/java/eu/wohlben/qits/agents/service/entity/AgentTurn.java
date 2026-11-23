@@ -14,9 +14,9 @@ import java.util.UUID;
 /**
  * One turn in an agent's inbox ({@code agent_turn}): a text the runtime hands the agent, then
  * acknowledges with {@code delivered_at}. RECOVERY turns are queued by the roster reconcile when a
- * generation moves past 1; ASSIGNED and COMMENTED ones come from qits-projects' events (the next
- * task), keyed by {@code source_event_id} so a redelivered event queues nothing
- * ({@code agent_turn_source_uq}).
+ * generation moves past 1; ASSIGNED and COMMENTED ones come from qits-projects' events ({@code
+ * control.Assignments}, {@code control.CommentNotices}), keyed by {@code source_event_id} so a
+ * redelivered event queues nothing ({@code agent_turn_source_uq}).
  *
  * <p><b>Uncaused.</b> {@code source_event_id} is the causation record of an event-driven turn; a
  * RECOVERY turn's cause is the generation it carries.

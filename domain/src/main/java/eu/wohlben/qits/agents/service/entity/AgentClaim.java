@@ -12,8 +12,8 @@ import java.util.UUID;
 /**
  * A work item an agent holds ({@code agent_claim}): open while {@code released_at} is null. At most
  * one open claim per agent and item ({@code agent_claim_open_uq}), so a redelivered assignment is a
- * no-op. Written from qits-projects' {@code EntityAssigned} (the next task); read by the claims
- * door and by {@code openClaims} on the agent list.
+ * no-op. Written from qits-projects' {@code EntityAssigned} ({@code control.Assignments}); read
+ * by the claims door and by {@code openClaims} on the agent list.
  *
  * <p><b>Uncaused.</b> The claim carries who claimed and released it ({@code claimed_by}, {@code
  * released_by}), which is the record an operator reads.

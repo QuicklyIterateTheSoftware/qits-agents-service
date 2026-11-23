@@ -70,7 +70,7 @@ nothing over an unchanged roster.
   FAILED; `reported_generation`, `session_id`, `reported_detail`, `reported_at`) and its credential
   (`token_id`, `token_subject`, `token_value`). Unique per project and name.
 - `agent_claim` — an item the agent holds, open while `released_at` is null; at most one open per
-  agent and item. Fed from qits-projects' `EntityAssigned` (the next task).
+  agent and item. Fed from qits-projects' `EntityAssigned` (below).
 - `agent_turn` — the agent's inbox: RECOVERY (from the reconcile), ASSIGNED and COMMENTED (from
   qits-projects' events, keyed by `source_event_id`), acknowledged by `delivered_at`.
 
@@ -97,6 +97,24 @@ nothing over an unchanged roster.
   credential, so its in-container daemon calls these doors with the agent's own token.
 
 The token value is served by `launch` and nowhere else.
+
+## Claims and turns from qits-projects' events
+
+Two durable consumptions (`bus/`), both consuming from now (no backfill), applied in `control/`:
+
+- **`EntityAssigned`** (consumer `agents-assignments`, `control/Assignments`). An agent of the
+  event's project *matches* a value equal to its name or its token subject. Previous assignee
+  matches A and the new one does not: A's open claim on the item is released (`released_at` =
+  `assignedAt`, `released_by` = `changedBy`). New assignee matches a RUNNING agent B: B claims the
+  item and, unless `changedBy` is B's own subject, gets an ASSIGNED turn
+  `(<changedByName> has assigned <qualifiedId> to you)`. A RETIRED agent gets neither.
+- **`EntityCommented`** (consumer `agents-comments`, `control/CommentNotices`). Every RUNNING agent
+  holding `rootEntityId` (else `entityId`) open, and not the comment's `changedBy`, gets a
+  COMMENTED turn `(<who> just commented on <the claim's qualifiedId>)`; `who` is
+  `<authorAgentOf>'s agent`, else `authorName`, else `author`.
+
+A redelivered event changes nothing: a claim opened at the event's `assignedAt` is never opened
+again, and a turn is unique per agent and `source_event_id`. Nothing new is published.
 
 ## The event
 
