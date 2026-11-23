@@ -1,0 +1,35 @@
+# How this repository releases: the packaged java-service recipe (qits-ci-service
+# ci/src/main/resources/release-archetypes/java-service.yml) — build and test the fold, then push the
+# one image and publish the declared contracts.
+archetype: java-service
+
+artifacts:
+  - { type: docker, name: qits/qits-agents, sbom: .sbom/sbom.json }
+  # The committed OpenAPI document, published as `@apidocs/qits-agents` on every release
+  # (OpenApiSchemaExportTest keeps it current).
+  - { type: docs, name: "@apidocs/qits-agents", path: docs/openapi.yml }
+
+# The userflow catalogue (service/src/test/.../stories/**IT), published as @userflows/qits-agents:
+# the java-service recipe's build-and-test step requires */target/userstories from the verify.
+userflows: qits-agents
+
+# The provider golden masters: the platform packages `golden-masters/` as
+# `eu.wohlben.qits:qits-agents-golden-masters`. contracts/GoldenMasterRecordingTest records them.
+#
+# THE PACTS this service writes as a consumer, flat in `pacts/`:
+#   qits-idp-service       quarkus-oidc's discovery and JWKS reads, the `qits` client's mint, and the
+#                          agents' token commission and revocation (contracts/consumer/IdpPactTest);
+#   qits-projects-service  the reconcile's project list (contracts/consumer/ProjectsPactTest);
+#   qits-events-service    the outbox publish of ProjectAgentChanged, through qits-eventstream
+#                          (EventstreamPactTest, from the library's kit).
+contracts:
+  application: qits-agents
+  golden-masters: { from: golden-masters/, packages: [maven] }
+  # The entity exposure map EntityExposureTest keeps current.
+  entities: docs/entities.json
+  # The entity diagram `qits database diagram` writes, checked by the build-and-test step.
+  database: docs/database/
+  pacts:
+    qits-events-service: { packages: [maven] }
+    qits-idp-service: { packages: [maven] }
+    qits-projects-service: { packages: [maven] }

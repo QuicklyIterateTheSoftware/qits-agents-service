@@ -1,0 +1,23 @@
+# How qits-deployments deploys this repository. It reads this file from the git host at the built
+# sha, so the answer travels with the commit; carrying the file at all is what says it deploys.
+#
+# THE DEPLOYED IDENTITY: the application qits-agents, its image qits/qits-agents, its databases and
+# its idp client all carry this name.
+application: qits-agents
+
+# https://agents.qits.<domain>/agents: the API at /agents/api, health and the API document at
+# /agents/q. NO `exposure:` KEY: the deployment is public, as qits-network-access's is — every door
+# takes a bearer, and the runtime and the agents' own MCP calls reach it through the public edge.
+host: agents
+routes: /agents
+health_path: /agents/q/health/ready
+api-docs: /agents/q/swagger-ui
+
+# TWO DATABASES AND A SERVICE CLIENT.
+#   db           qits_agents: agent, agent_claim, agent_turn (domain's Flyway lineage, schema agents).
+#   eventstream  qits_agents_eventstream: the qits-eventstream outbox. The resource NAME is
+#                load-bearing — the jar reads QITS_RESOURCE_EVENTSTREAM_*.
+#   idp:client   this application's own qits-idp service client, `<env>-qits-agents`: the bearer the
+#                eventstream library, the telemetry exporters and the qits-projects read present,
+#                and the Basic pair the agents' tokens are commissioned with.
+resources: postgresql:db:qits_agents, postgresql:eventstream:qits_agents_eventstream, idp:client
