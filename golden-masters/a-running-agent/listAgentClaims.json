@@ -1,0 +1,12 @@
+[
+  {
+    "entityId": "00000000-0000-4000-8000-000000000002",
+    "qualifiedId": "qits-101",
+    "archetype": "TASK",
+    "title": "Work item qits-101",
+    "claimedBy": "a-person",
+    "claimedAt": "2026-01-01T00:00:00Z",
+    "releasedAt": null,
+    "releasedBy": null
+  }
+]

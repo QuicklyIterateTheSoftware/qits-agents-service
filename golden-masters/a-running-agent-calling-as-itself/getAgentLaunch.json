@@ -1,0 +1,12 @@
+{
+  "project": "qits",
+  "projectId": "00000000-0000-4000-8000-000000000002",
+  "name": "developer",
+  "generation": 2,
+  "brief": "You are the developer of the qits project.",
+  "model": null,
+  "effort": null,
+  "sessionId": "session-contract",
+  "token": "qits_tok_contract-developer",
+  "tokenSubject": "tok-project-agent-qits-developer"
+}

@@ -1,0 +1,17 @@
+{
+  "name": "developer",
+  "description": "Develops qits work items end to end.",
+  "generation": 2,
+  "desiredState": "RUNNING",
+  "reportedState": "IDLE",
+  "reportedGeneration": 2,
+  "sessionId": "session-contract",
+  "reportedAt": "2026-01-01T00:00:00Z",
+  "declarationHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "tokenSubject": "tok-project-agent-qits-developer",
+  "openClaims": 1,
+  "brief": "You are the developer of the qits project.",
+  "recoveryPrompt": "You were restarted; read your claims and carry on.",
+  "model": null,
+  "effort": null
+}

@@ -1,0 +1,154 @@
+{
+  "formatVersion" : 2,
+  "application" : "qits-agents",
+  "entities" : [
+    {
+      "entity" : "eu.wohlben.qits.agents.service.entity.AgentClaim",
+      "table" : "agent_claim",
+      "marking" : "domain",
+      "reason" : null,
+      "projectionOf" : null,
+      "knownGap" : null,
+      "dtos" : [
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.AgentsWire$ClaimDto",
+          "kind" : "factory",
+          "via" : null,
+          "site" : "ClaimDto.of(AgentClaim)"
+        }
+      ],
+      "operations" : [
+        {
+          "operationId" : "listAgentClaims",
+          "method" : "GET",
+          "path" : "/projects/{project}/agents/{name}/claims",
+          "dto" : "eu.wohlben.qits.agents.service.api.AgentsWire$ClaimDto",
+          "kind" : "returns",
+          "cardinality" : "collection"
+        }
+      ]
+    },
+    {
+      "entity" : "eu.wohlben.qits.agents.service.entity.AgentTurn",
+      "table" : "agent_turn",
+      "marking" : "domain",
+      "reason" : null,
+      "projectionOf" : null,
+      "knownGap" : null,
+      "dtos" : [
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.AgentsWire$TurnDto",
+          "kind" : "factory",
+          "via" : null,
+          "site" : "TurnDto.of(AgentTurn)"
+        }
+      ],
+      "operations" : [
+        {
+          "operationId" : "listAgentTurns",
+          "method" : "GET",
+          "path" : "/projects/{project}/agents/{name}/turns",
+          "dto" : "eu.wohlben.qits.agents.service.api.AgentsWire$TurnDto",
+          "kind" : "returns",
+          "cardinality" : "collection"
+        }
+      ]
+    },
+    {
+      "entity" : "eu.wohlben.qits.agents.service.entity.ProjectAgent",
+      "table" : "agent",
+      "marking" : "domain",
+      "reason" : null,
+      "projectionOf" : null,
+      "knownGap" : null,
+      "dtos" : [
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.AgentsWire$AgentDto",
+          "kind" : "factory",
+          "via" : null,
+          "site" : "AgentDto.of(ProjectAgent, long)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.AgentsWire$AgentSummaryDto",
+          "kind" : "factory",
+          "via" : null,
+          "site" : "AgentSummaryDto.of(ProjectAgent, long)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.AgentsWire$ClaimDto",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "AgentsResource.claims(String, String, String)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.AgentsWire$LaunchDto",
+          "kind" : "factory",
+          "via" : null,
+          "site" : "LaunchDto.of(ProjectAgent)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.AgentsWire$MeDto",
+          "kind" : "factory",
+          "via" : null,
+          "site" : "MeDto.of(ProjectAgent)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.AgentsWire$TurnDto",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "AgentsResource.turns(String, String, boolean)"
+        }
+      ],
+      "operations" : [
+        {
+          "operationId" : "getAgent",
+          "method" : "GET",
+          "path" : "/projects/{project}/agents/{name}",
+          "dto" : "eu.wohlben.qits.agents.service.api.AgentsWire$AgentDto",
+          "kind" : "returns",
+          "cardinality" : "single"
+        },
+        {
+          "operationId" : "getAgentLaunch",
+          "method" : "GET",
+          "path" : "/projects/{project}/agents/{name}/launch",
+          "dto" : "eu.wohlben.qits.agents.service.api.AgentsWire$LaunchDto",
+          "kind" : "returns",
+          "cardinality" : "single"
+        },
+        {
+          "operationId" : "getMe",
+          "method" : "GET",
+          "path" : "/me",
+          "dto" : "eu.wohlben.qits.agents.service.api.AgentsWire$MeDto",
+          "kind" : "returns",
+          "cardinality" : "single"
+        },
+        {
+          "operationId" : "listAgentClaims",
+          "method" : "GET",
+          "path" : "/projects/{project}/agents/{name}/claims",
+          "dto" : "eu.wohlben.qits.agents.service.api.AgentsWire$ClaimDto",
+          "kind" : "returns",
+          "cardinality" : "collection"
+        },
+        {
+          "operationId" : "listAgentTurns",
+          "method" : "GET",
+          "path" : "/projects/{project}/agents/{name}/turns",
+          "dto" : "eu.wohlben.qits.agents.service.api.AgentsWire$TurnDto",
+          "kind" : "returns",
+          "cardinality" : "collection"
+        },
+        {
+          "operationId" : "listAgents",
+          "method" : "GET",
+          "path" : "/projects/{project}/agents",
+          "dto" : "eu.wohlben.qits.agents.service.api.AgentsWire$AgentSummaryDto",
+          "kind" : "returns",
+          "cardinality" : "collection"
+        }
+      ]
+    }
+  ]
+}

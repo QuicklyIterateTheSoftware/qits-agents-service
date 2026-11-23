@@ -1,0 +1,234 @@
+{
+  "formatVersion": 1,
+  "provider": "qits-agents",
+  "states": [
+    {
+      "name": "a running agent",
+      "slug": "a-running-agent",
+      "params": {
+        "name": "developer",
+        "project": "qits",
+        "turnId": "00000000-0000-4000-8000-000000000001"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "getAgent",
+          "method": "GET",
+          "path": "/agents/api/projects/{project}/agents/{name}",
+          "status": 200,
+          "file": "a-running-agent/getAgent.json",
+          "frozen": {
+            "ids": [],
+            "instants": [
+              "$.reportedAt"
+            ],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "getAgentLaunch",
+          "method": "GET",
+          "path": "/agents/api/projects/{project}/agents/{name}/launch",
+          "status": 200,
+          "file": "a-running-agent/getAgentLaunch.json",
+          "frozen": {
+            "ids": [
+              "$.projectId"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "listAgentClaims",
+          "method": "GET",
+          "path": "/agents/api/projects/{project}/agents/{name}/claims",
+          "status": 200,
+          "file": "a-running-agent/listAgentClaims.json",
+          "frozen": {
+            "ids": [
+              "$[*].entityId"
+            ],
+            "instants": [
+              "$[*].claimedAt"
+            ],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "listAgentTurns",
+          "method": "GET",
+          "path": "/agents/api/projects/{project}/agents/{name}/turns",
+          "status": 200,
+          "file": "a-running-agent/listAgentTurns.json",
+          "frozen": {
+            "ids": [
+              "$[*].id"
+            ],
+            "instants": [
+              "$[*].createdAt"
+            ],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "listAgents",
+          "method": "GET",
+          "path": "/agents/api/projects/{project}/agents",
+          "status": 200,
+          "file": "a-running-agent/listAgents.json",
+          "frozen": {
+            "ids": [],
+            "instants": [
+              "$[*].reportedAt"
+            ],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "markAgentTurnDelivered",
+          "method": "POST",
+          "path": "/agents/api/projects/{project}/agents/{name}/turns/{turnId}/delivered",
+          "status": 204,
+          "file": null,
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "reportAgent",
+          "method": "PUT",
+          "path": "/agents/api/projects/{project}/agents/{name}/report",
+          "body": {
+            "generation": 2,
+            "state": "BUSY",
+            "sessionId": "session-contract"
+          },
+          "status": 204,
+          "file": null,
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "a running agent calling as itself",
+      "slug": "a-running-agent-calling-as-itself",
+      "params": {
+        "authorization": "Bearer qits_tok_contract-developer",
+        "name": "developer",
+        "project": "qits",
+        "turnId": "00000000-0000-4000-8000-000000000001"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "getAgentLaunch",
+          "method": "GET",
+          "path": "/agents/api/projects/{project}/agents/{name}/launch",
+          "headers": {
+            "Authorization": "{authorization}"
+          },
+          "status": 200,
+          "file": "a-running-agent-calling-as-itself/getAgentLaunch.json",
+          "frozen": {
+            "ids": [
+              "$.projectId"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "getMe",
+          "method": "GET",
+          "path": "/agents/api/me",
+          "headers": {
+            "Authorization": "{authorization}"
+          },
+          "status": 200,
+          "file": "a-running-agent-calling-as-itself/getMe.json",
+          "frozen": {
+            "ids": [
+              "$.projectId"
+            ],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "listAgentTurns",
+          "method": "GET",
+          "path": "/agents/api/projects/{project}/agents/{name}/turns",
+          "headers": {
+            "Authorization": "{authorization}"
+          },
+          "status": 200,
+          "file": "a-running-agent-calling-as-itself/listAgentTurns.json",
+          "frozen": {
+            "ids": [
+              "$[*].id"
+            ],
+            "instants": [
+              "$[*].createdAt"
+            ],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "markAgentTurnDelivered",
+          "method": "POST",
+          "path": "/agents/api/projects/{project}/agents/{name}/turns/{turnId}/delivered",
+          "headers": {
+            "Authorization": "{authorization}"
+          },
+          "status": 204,
+          "file": null,
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "reportAgent",
+          "method": "PUT",
+          "path": "/agents/api/projects/{project}/agents/{name}/report",
+          "headers": {
+            "Authorization": "{authorization}"
+          },
+          "body": {
+            "generation": 2,
+            "state": "BUSY",
+            "sessionId": "session-contract"
+          },
+          "status": 204,
+          "file": null,
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        }
+      ]
+    }
+  ]
+}
