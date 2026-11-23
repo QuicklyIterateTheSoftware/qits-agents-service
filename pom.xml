@@ -73,7 +73,7 @@
         <!-- The consumer pacts against qits-idp-service and qits-projects-service (test scope): the
              shared golden-master reader and what each provider answers in each provider state. -->
         <qits.pact-consumer.version>2026.1106.507</qits.pact-consumer.version>
-        <qits.idp-golden-masters.version>2026.1122.143700</qits.idp-golden-masters.version>
+        <qits.idp-golden-masters.version>2026.1123.194348</qits.idp-golden-masters.version>
         <qits.projects-golden-masters.version>2026.1122.200309</qits.projects-golden-masters.version>
         <qits.maven.repository.url>https://registry.qits.wohlben.eu/artifacts/maven/maven</qits.maven.repository.url>
         <!-- Real PostgreSQL binaries as a maven dependency, spawned by the suite: a clone tests
