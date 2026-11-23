@@ -33,6 +33,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 /**
@@ -274,5 +275,22 @@ public class AgentRuntimeIT {
       ReportAssertions.assertNotLeaked(CATEGORY, LAUNCH_SLUG, bearer);
       ReportAssertions.assertNotLeaked(CATEGORY, REFUSED_SLUG, bearer);
     }
+  }
+
+  /**
+   * The packaged artifact carries its roster. The JVM suites cannot see this: the native image
+   * finds {@code AgentRoster} providers only when the service loader is registered for it, and
+   * 2026.1123.194720 shipped without one ("agent rosters on the classpath: []").
+   */
+  @Test
+  @Order(3)
+  void thePackagedServiceCarriesTheQitsRoster() {
+    given()
+        .when()
+        .get("/agents/q/health/ready")
+        .then()
+        .statusCode(200)
+        .body("checks.find { it.name == 'agent-rosters' }.status", equalTo("UP"))
+        .body("checks.find { it.name == 'agent-rosters' }.data.projects", equalTo("qits"));
   }
 }
