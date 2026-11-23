@@ -6,8 +6,7 @@
 application: qits-agents
 
 # https://agents.qits.<domain>/agents: the API at /agents/api, health and the API document at
-# /agents/q. NO `exposure:` KEY: the deployment is public, as qits-network-access's is — every door
-# takes a bearer, and the runtime and the agents' own MCP calls reach it through the public edge.
+# /agents/q.
 host: agents
 routes: /agents
 health_path: /agents/q/health/ready
@@ -21,3 +20,10 @@ api-docs: /agents/q/swagger-ui
 #                eventstream library, the telemetry exporters and the qits-projects read present,
 #                and the Basic pair the agents' tokens are commissioned with.
 resources: postgresql:db:qits_agents, postgresql:eventstream:qits_agents_eventstream, idp:client
+
+# PRIVATE, like every service that calls qits-projects (qits-1980): projects.qits.<domain> is
+# served by qits-edge-private only, and 2026.1123.214914, deployed public, timed out dialing it
+# (100.96.0.1:443) so its roster reconcile never ran. Served by qits-edge-private, reached through
+# the WireGuard tunnel or the qits-private overlay; workspaces and agent containers reach it there.
+# Its databases live on the private Postgres. Revert: delete this line.
+exposure: private

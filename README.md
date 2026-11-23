@@ -13,8 +13,8 @@ design pages are on the epic's dossier (`design-and-boundaries`,
 
 The application is `qits-agents`, image `qits/qits-agents`, served at
 `https://agents.qits.<domain>/agents`: the API under `/agents/api`, health and the API document
-under `/agents/q`. There is no `exposure:` in `.config/qits/deployments.yml`: the deployment is
-public, and every door takes a bearer.
+under `/agents/q`. The deployment is `exposure: private`, served by qits-edge-private, because it
+calls qits-projects, which is private (qits-1980). Every door takes a bearer.
 
 ```
  roster jars (ServiceLoader) ──▶ RosterReconcile ──▶ agent / agent_turn (RECOVERY)
