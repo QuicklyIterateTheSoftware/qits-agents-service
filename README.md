@@ -15,6 +15,9 @@ The application is `qits-agents`, image `qits/qits-agents`, served at
 `https://agents.qits.<domain>/agents`: the API under `/agents/api`, health and the API document
 under `/agents/q`. The deployment is `exposure: private`, served by qits-edge-private, because it
 calls qits-projects, which is private (qits-1980). Every door takes a bearer.
+It reaches qits-projects only through the `--dns` qits-deployments hands a private service
+(the private edge's VIP, then an upstream): a task created without one resolves
+`projects.qits.<domain>` to the public tunnel address and every call times out (qits-2586).
 
 ```
  roster jars (ServiceLoader) ──▶ RosterReconcile ──▶ agent / agent_turn (RECOVERY)
