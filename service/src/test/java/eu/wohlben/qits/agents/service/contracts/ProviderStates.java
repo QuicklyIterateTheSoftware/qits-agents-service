@@ -41,6 +41,14 @@ public class ProviderStates {
   public static final String A_RUNNING_AGENT_CALLING_AS_ITSELF =
       "a running agent calling as itself";
 
+  /** qits' developer, holding one pending WAIT turn and nothing else (qits-2597). */
+  public static final String A_RUNNING_AGENT_WITH_A_PENDING_WAIT_TURN =
+      "a running agent with a pending wait turn";
+
+  /** The same, and its own credential granted as {@code authorization} (qits-2597). */
+  public static final String A_RUNNING_AGENT_WITH_A_PENDING_WAIT_TURN_CALLING_AS_ITSELF =
+      "a running agent with a pending wait turn calling as itself";
+
   /** Who the operator recordings call as. */
   public static final String OPERATOR = "operator";
 
@@ -57,6 +65,8 @@ public class ProviderStates {
 
   static final UUID RELEASED_ITEM = UUID.fromString("b18236d4-e8f9-4a1b-86b7-c2d3e4f5a6b7");
 
+  static final UUID WAIT_TURN = UUID.fromString("c29347e5-f9a0-4b2c-97c8-d3e4f5a6b7c8");
+
   /** What a state hands back: its parameters, keys sorted, and no unique tokens. */
   public record Setup(Map<String, String> params) {
     public List<String> uniqueTokens() {
@@ -71,6 +81,11 @@ public class ProviderStates {
   public ProviderStates() {
     states.put(A_RUNNING_AGENT, this::aRunningAgent);
     states.put(A_RUNNING_AGENT_CALLING_AS_ITSELF, this::aRunningAgentCallingAsItself);
+    states.put(
+        A_RUNNING_AGENT_WITH_A_PENDING_WAIT_TURN, this::aRunningAgentWithAPendingWaitTurn);
+    states.put(
+        A_RUNNING_AGENT_WITH_A_PENDING_WAIT_TURN_CALLING_AS_ITSELF,
+        this::aRunningAgentWithAPendingWaitTurnCallingAsItself);
   }
 
   public Set<String> names() {
@@ -110,6 +125,47 @@ public class ProviderStates {
     Map<String, String> params = params();
     params.put("authorization", SELF_BEARER);
     return new Setup(Collections.unmodifiableMap(params));
+  }
+
+  /**
+   * qits' developer, generation 2, RUNNING, holding one pending WAIT turn and nothing else — the
+   * text {@code control.WaitNotices} renders for a MATCHED wait with a {@code matchedEventId}
+   * (qits-2597).
+   */
+  private Setup aRunningAgentWithAPendingWaitTurn() {
+    stageWaitTurn();
+    return new Setup(Collections.unmodifiableMap(waitTurnParams()));
+  }
+
+  /** The same, and its own credential granted as {@code authorization}. */
+  private Setup aRunningAgentWithAPendingWaitTurnCallingAsItself() {
+    stageWaitTurn();
+    ContractCallers.bearer(SELF_BEARER, Fixtures.subject(Fixtures.PROJECT, "developer"), Roles.AGENT);
+    Map<String, String> params = waitTurnParams();
+    params.put("authorization", SELF_BEARER);
+    return new Setup(Collections.unmodifiableMap(params));
+  }
+
+  private void stageWaitTurn() {
+    fixtures.clear();
+    fixtures.agent(AGENT, "developer", 2);
+    fixtures.turn(
+        WAIT_TURN,
+        AGENT,
+        2,
+        TurnKind.WAIT,
+        "(wait \"ci green\" for qits-2518 matched BuildStatusChanged"
+            + " 0f3c2a4e-5b6c-47d8-8e9f-a0b1c2d3e4f5)",
+        Instant.parse("2026-11-23T10:00:00Z"),
+        null);
+  }
+
+  private static Map<String, String> waitTurnParams() {
+    Map<String, String> params = new TreeMap<>();
+    params.put("project", Fixtures.PROJECT);
+    params.put("name", "developer");
+    params.put("turnId", WAIT_TURN.toString());
+    return params;
   }
 
   private void stage() {

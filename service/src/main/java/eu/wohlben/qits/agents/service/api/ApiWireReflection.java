@@ -4,6 +4,7 @@ import eu.wohlben.qits.agents.runtime.SystemLeasesApi;
 import eu.wohlben.qits.agents.service.events.EntityAssigned;
 import eu.wohlben.qits.agents.service.events.EntityCommented;
 import eu.wohlben.qits.agents.service.events.ProjectAgentChanged;
+import eu.wohlben.qits.agents.service.events.ProjectAgentWaitClosed;
 import eu.wohlben.qits.agents.service.idp.IdpTokensApi;
 import eu.wohlben.qits.agents.service.projects.ProjectsApi;
 import eu.wohlben.qits.eventstream.control.EventEnvelope;
@@ -35,6 +36,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
       // QitsEvents, so the library's own registration does not reach them.
       EntityAssigned.class,
       EntityCommented.class,
+      ProjectAgentWaitClosed.class,
       // qits-eventstream serializes with its own ObjectMapper, so nothing registers its PUT body or
       // the frames it reads for us: without these the native image publishes nothing, silently.
       EventEnvelope.class,

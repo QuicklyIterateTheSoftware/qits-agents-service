@@ -119,4 +119,14 @@ class ConsumerPactVerificationTest {
   Map<String, String> aRunningAgentCallingAsItself() {
     return states.params(ProviderStates.A_RUNNING_AGENT_CALLING_AS_ITSELF);
   }
+
+  @State(ProviderStates.A_RUNNING_AGENT_WITH_A_PENDING_WAIT_TURN)
+  Map<String, String> aRunningAgentWithAPendingWaitTurn() {
+    return states.params(ProviderStates.A_RUNNING_AGENT_WITH_A_PENDING_WAIT_TURN);
+  }
+
+  @State(ProviderStates.A_RUNNING_AGENT_WITH_A_PENDING_WAIT_TURN_CALLING_AS_ITSELF)
+  Map<String, String> aRunningAgentWithAPendingWaitTurnCallingAsItself() {
+    return states.params(ProviderStates.A_RUNNING_AGENT_WITH_A_PENDING_WAIT_TURN_CALLING_AS_ITSELF);
+  }
 }

@@ -7,6 +7,7 @@ import eu.wohlben.qits.agents.runtime.SystemLeasesApi;
 import eu.wohlben.qits.agents.service.events.EntityAssigned;
 import eu.wohlben.qits.agents.service.events.EntityCommented;
 import eu.wohlben.qits.agents.service.events.ProjectAgentChanged;
+import eu.wohlben.qits.agents.service.events.ProjectAgentWaitClosed;
 import eu.wohlben.qits.agents.service.idp.IdpTokensApi;
 import eu.wohlben.qits.agents.service.projects.ProjectsApi;
 import io.quarkus.runtime.annotations.RegisterForReflection;
@@ -38,6 +39,9 @@ class ApiWireReflectionTest {
     assertTrue(registered.contains(EntityAssigned.class), "the consumed EntityAssigned is registered");
     assertTrue(
         registered.contains(EntityCommented.class), "the consumed EntityCommented is registered");
+    assertTrue(
+        registered.contains(ProjectAgentWaitClosed.class),
+        "the consumed ProjectAgentWaitClosed is registered");
     for (Class<?> owner : List.of(ProjectsApi.class, IdpTokensApi.class, SystemLeasesApi.class)) {
       for (Class<?> type : owner.getDeclaredClasses()) {
         if (type.isRecord()) {

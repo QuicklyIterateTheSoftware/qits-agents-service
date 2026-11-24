@@ -229,6 +229,72 @@
           }
         }
       ]
+    },
+    {
+      "name": "a running agent with a pending wait turn",
+      "slug": "a-running-agent-with-a-pending-wait-turn",
+      "params": {
+        "name": "developer",
+        "project": "qits",
+        "turnId": "00000000-0000-4000-8000-000000000001"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "listAgentTurns",
+          "method": "GET",
+          "path": "/agents/api/projects/{project}/agents/{name}/turns",
+          "status": 200,
+          "file": "a-running-agent-with-a-pending-wait-turn/listAgentTurns.json",
+          "frozen": {
+            "ids": [
+              "$[*].id"
+            ],
+            "instants": [
+              "$[*].createdAt"
+            ],
+            "strings": [
+              "$[*].text"
+            ],
+            "listFilteredTo": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "a running agent with a pending wait turn calling as itself",
+      "slug": "a-running-agent-with-a-pending-wait-turn-calling-as-itself",
+      "params": {
+        "authorization": "Bearer qits_tok_contract-developer",
+        "name": "developer",
+        "project": "qits",
+        "turnId": "00000000-0000-4000-8000-000000000001"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "listAgentTurns",
+          "method": "GET",
+          "path": "/agents/api/projects/{project}/agents/{name}/turns",
+          "headers": {
+            "Authorization": "{authorization}"
+          },
+          "status": 200,
+          "file": "a-running-agent-with-a-pending-wait-turn-calling-as-itself/listAgentTurns.json",
+          "frozen": {
+            "ids": [
+              "$[*].id"
+            ],
+            "instants": [
+              "$[*].createdAt"
+            ],
+            "strings": [
+              "$[*].text"
+            ],
+            "listFilteredTo": null
+          }
+        }
+      ]
     }
   ]
 }

@@ -110,7 +110,25 @@ class GoldenMasterRecordingTest {
           self("markAgentTurnDelivered", "POST", AGENT + "/turns/{turnId}/delivered", null, 204),
           self("getAgentLaunch", "GET", AGENT + "/launch", null, 200),
           self("reportAgent", "PUT", AGENT + "/report", REPORT, 204),
-          self("getMe", "GET", API + "/me", null, 200));
+          self("getMe", "GET", API + "/me", null, 200),
+          // qits-2597: the daemon's pact matches `kind` by type, so a WAIT turn's shape stays
+          // green; this is what lets it see one.
+          new Interaction(
+              ProviderStates.A_RUNNING_AGENT_WITH_A_PENDING_WAIT_TURN,
+              "listAgentTurns",
+              "GET",
+              AGENT + "/turns",
+              null,
+              200,
+              false),
+          new Interaction(
+              ProviderStates.A_RUNNING_AGENT_WITH_A_PENDING_WAIT_TURN_CALLING_AS_ITSELF,
+              "listAgentTurns",
+              "GET",
+              AGENT + "/turns",
+              null,
+              200,
+              true));
 
   private static final ObjectMapper JSON = new ObjectMapper();
 
