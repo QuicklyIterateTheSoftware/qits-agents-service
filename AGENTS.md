@@ -25,8 +25,13 @@ qits-maintenance's bumps — never by hand.
 - `service/` — the deployable: the REST surface (`api`), the two durable listeners (`bus`), the
   qits-projects client behind `ProjectDirectory` (`projects`), the qits-idp client behind
   `AgentCredentials` (`idp`), the periodic reconcile (`reconcile`), and every database-backed test.
-- **Reserved**: `eu.wohlben.qits.agents.runtime` (qits-2519's leases and specs). It reads agents
-  through `control/Agents` (`running()`, `byId()`) and never publishes `ProjectAgentChanged` itself.
+- `service/.../eu/wohlben/qits/agents/runtime` (qits-2519): the AGENT leases at qits-system
+  (`AgentLeases`, `AgentLeaseSweep`, `AgentSpecs`, `AgentSpecRoll`, the REST client `SystemLeasesApi`
+  behind `SystemLeasesClient`). It reads and writes agents through `control/Agents` (`running()`,
+  `byId()`, `retiredWithLease()`, `storeLease()`, `clearLease()`), never publishes
+  `ProjectAgentChanged` itself and never moves a generation or queues a turn. It sits outside
+  `eu.wohlben.qits.agents.service`, so every ArchUnit sweep here (`ArchRulesTest`,
+  `EntityExposureTest`, `OutboundCallGuardTest`) names both packages.
 
 ## Conventions
 
@@ -47,7 +52,9 @@ qits-maintenance's bumps — never by hand.
   `qits:admin-agent` is admitted, so is `qits:desk-admin` (`DeskAdminParityTest`). `RoleMatrixTest`
   pins the matrix, the foreign-agent 403 included.
 - **The caller** is the token's `sub` (`api/Callers`), never the principal name.
-- **The token value** leaves this service in `launch` and nowhere else; never log it.
+- **The token value** leaves this service in `launch` and in the agent's own lease spec
+  (`QITS_TOKEN`, to qits-system) and nowhere else; never log it, nor a spec (`LeaseSpec.toString`
+  prints the env's names only).
 - **Outbound calls** go through a MicroProfile REST client whose every method is a row of that
   provider's consumer pact (`contracts/consumer/OutboundCallGuardTest`); the bearer to
   qits-projects is the `qits` client's (`projects/ServiceBearer`, the one class allowed an
@@ -58,7 +65,12 @@ qits-maintenance's bumps — never by hand.
   (`support/ContractCallers`): `caller(subject, roles…)` for a plain caller, `bearer(value,
   subject, roles…)` for a token (an agent's own credential). A test with one caller uses
   `@TestSecurity`. qits-projects and qits-idp are stubbed by `support/StubDirectory` and
-  `support/StubCredentials`, installed with `QuarkusMock`.
+  `support/StubCredentials`, installed with `QuarkusMock`; qits-system's lease doors by
+  `support/FakeSystem`.
+- **`ProjectAgentChanged` in process**: `Agents.changed` fires it as a CDI event too, and
+  `AgentLeaseSweep` observes it `AFTER_SUCCESS` and sweeps on its own thread. `%test` turns the
+  runtime's triggers off (`qits.agents.runtime.enabled`); a suite drives `sweep()` or flips
+  `enabledOverride`.
 
 ## Generated files, and how to regenerate each
 
@@ -71,6 +83,7 @@ Every one of these compares by default and fails with a diff; `-Dgolden.update=t
 | `golden-masters/**` | `contracts/GoldenMasterRecordingTest` |
 | `pacts/*_qits-idp-service.json` | `contracts/consumer/IdpPactTest` (rows run by `IdpTokenMintPactTest`, `IdpTokensPactTest`) |
 | `pacts/*_qits-projects-service.json` | `contracts/consumer/ProjectsPactTest` |
+| `pacts/*_qits-system-service.json` | `contracts/consumer/SystemPactTest` |
 | `pacts/*_qits-events-service.json` | `EventstreamPactTest` |
 | `docs/database/agents.md` | `qits database diagram` (below) |
 

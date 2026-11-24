@@ -10,6 +10,7 @@ import eu.wohlben.qits.agents.service.entity.TurnKind;
 import eu.wohlben.qits.agents.service.events.ProjectAgentChanged;
 import eu.wohlben.qits.eventstream.QitsEventBus;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
@@ -41,6 +42,13 @@ public class Agents {
       Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
 
   @Inject QitsEventBus bus;
+
+  /**
+   * The same event, in process: the runtime ({@code runtime/AgentLeaseSweep}, qits-2519) observes
+   * it after the write commits and brings the agent's lease in line at once, rather than on its
+   * next interval.
+   */
+  @Inject Event<ProjectAgentChanged> inProcess;
 
   // --- reads -----------------------------------------------------------------------------------
 
@@ -163,6 +171,45 @@ public class Agents {
       changed(agent, now);
     }
     return agent;
+  }
+
+  // --- the runtime's lease (qits-2519) ----------------------------------------------------------
+
+  /** Every RETIRED agent whose row still names a lease, which the runtime ends. */
+  @Transactional
+  public List<ProjectAgent> retiredWithLease() {
+    return ProjectAgent.list(
+        "desiredState = ?1 and leaseId is not null order by projectSlug, name",
+        DesiredState.RETIRED);
+  }
+
+  /**
+   * Records the lease the runtime was granted for the agent — only on a row that names none, so a
+   * lease recorded meanwhile is never overwritten. Answers whether it was stored. Publishes nothing:
+   * a lease moves no generation, desired state or reported state.
+   */
+  @Transactional
+  public boolean storeLease(UUID agentId, UUID leaseId) {
+    ProjectAgent agent = ProjectAgent.findById(agentId);
+    if (agent == null || agent.leaseId != null) {
+      return false;
+    }
+    agent.leaseId = leaseId;
+    agent.updatedAt = now();
+    return true;
+  }
+
+  /**
+   * Forgets the agent's lease — only while the row still names that lease. Publishes nothing.
+   */
+  @Transactional
+  public void clearLease(UUID agentId, UUID leaseId) {
+    ProjectAgent agent = ProjectAgent.findById(agentId);
+    if (agent == null || !leaseId.equals(agent.leaseId)) {
+      return;
+    }
+    agent.leaseId = null;
+    agent.updatedAt = now();
   }
 
   // --- the roster reconcile's writes -----------------------------------------------------------
@@ -304,7 +351,7 @@ public class Agents {
   /** Publishes the row's state, after its flush, in the caller's transaction. */
   private void changed(ProjectAgent agent, Instant at) {
     ProjectAgent.flush();
-    bus.publish(
+    ProjectAgentChanged event =
         new ProjectAgentChanged(
             UUID.randomUUID(),
             agent.projectId,
@@ -315,7 +362,9 @@ public class Agents {
             agent.reportedState.name(),
             agent.declarationHash,
             at,
-            at));
+            at);
+    bus.publish(event);
+    inProcess.fire(event);
   }
 
   private static void copy(

@@ -123,6 +123,20 @@ public class Fixtures {
     return turn;
   }
 
+  /** The lease the runtime last recorded for the agent, written directly. */
+  @Transactional
+  public void lease(UUID agentId, UUID leaseId) {
+    ProjectAgent agent = ProjectAgent.findById(agentId);
+    agent.leaseId = leaseId;
+  }
+
+  /** Puts a token on the agent, as a commission after a re-declaration does. */
+  @Transactional
+  public void token(UUID agentId, String value) {
+    ProjectAgent agent = ProjectAgent.findById(agentId);
+    agent.tokenValue = value;
+  }
+
   @Transactional
   public ProjectAgent read(UUID agentId) {
     return ProjectAgent.findById(agentId);
@@ -169,6 +183,12 @@ public class Fixtures {
   public static StubCredentials credentials(StubCredentials credentials) {
     QuarkusMock.installMockForType(credentials, AgentCredentials.class);
     return credentials;
+  }
+
+  /** Installs {@code system} as qits-system's lease doors, for the current test. */
+  public static FakeSystem system(FakeSystem system) {
+    QuarkusMock.installMockForType(system, eu.wohlben.qits.agents.runtime.SystemLeasesClient.class);
+    return system;
   }
 
   /** The recorded events of one type. */

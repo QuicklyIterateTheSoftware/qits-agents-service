@@ -18,7 +18,7 @@ import java.util.Set;
  * -Dgolden.update=true} to rewrite it.
  */
 @AnalyzeClasses(
-    packages = "eu.wohlben.qits.agents.service",
+    packages = {"eu.wohlben.qits.agents.service", "eu.wohlben.qits.agents.runtime"},
     importOptions = ImportOption.DoNotIncludeTests.class)
 class EntityExposureTest {
 

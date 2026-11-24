@@ -28,6 +28,11 @@
             <artifactId>qits-agents-roster</artifactId>
         </dependency>
         <dependency>
+            <!-- AgentImage.VERSION: the `qits/agent` tag every AGENT lease runs (runtime/AgentSpecs). -->
+            <groupId>${project.groupId}</groupId>
+            <artifactId>qits-agents-daemon-protocol</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-arc</artifactId>
         </dependency>
@@ -162,6 +167,12 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>qits-projects-golden-masters</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- What qits-system answers the AGENT tenant's lease calls (SystemPactTest). -->
+            <groupId>${project.groupId}</groupId>
+            <artifactId>qits-system-golden-masters</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

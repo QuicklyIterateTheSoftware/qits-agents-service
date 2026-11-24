@@ -6,8 +6,9 @@ agents as code — an `AgentRoster` in its own `<projectslug>-agents-roster-java
 and this service turns each declaration into a row: which generation of it should run, what the
 runtime last reported, the agent's credential, the items it holds and the turns waiting for it.
 
-It runs no agent. The runtime (qits-2519) leases a container per RUNNING agent, reads its `launch`,
-writes its `report` and hands it its turns; qits-2520's CLI asks `GET /me` who the caller is. The
+It runs no agent itself: its runtime (`eu.wohlben.qits.agents.runtime`, qits-2519, below) leases a
+container per RUNNING agent from qits-system, and the daemon in it reads its `launch`, writes its
+`report` and takes its turns; qits-2520's CLI asks `GET /me` who the caller is. The
 design pages are on the epic's dossier (`design-and-boundaries`,
 `qits-agents-service-skeleton-tables-and-doors`).
 
@@ -65,16 +66,60 @@ are called outside it; a failed call is retried by the next run. `reconcile/Rost
 re-runs the reconcile every `qits.agents.roster-reconcile-interval` (10 minutes), which writes
 nothing over an unchanged roster.
 
+## The runtime: one AGENT lease per RUNNING agent (qits-2519)
+
+qits-system maps tenants by client id, and this service's `qits` client is `qits-agents`
+(`qits.system.targets.tenants.qits-agents=AGENT`), so the agents' lease client lives here. It reads
+and writes rows only through `control/Agents`, never moves a generation and never queues a turn.
+
+- **`AgentLeases.apply`**: a RUNNING agent with a token and no lease asks for one, `POST
+  {qits.agents.system.url}/system/api/leases` `{slotType: AGENT, ownerRef: <agentId>, workKey:
+  agent-<agentId>, priority: 0, spec}` with the `qits` client's bearer, and stores the id in
+  `agent.lease_id`. A `LEASE_EXISTS` refusal adopts this tenant's live lease for the agent from `GET
+  /system/api/leases` (a crash between the ask and the store).
+- **`AgentLeases.observe`**: `GET …/leases/{id}`; EXITED or FAILED is ended and asked for again,
+  ENDED or gone is forgotten and asked for again.
+- **`AgentLeases.end`**: `DELETE …/leases/{id}`, then `lease_id` cleared. The work volume is never
+  touched; the AGENT policy keeps it.
+- **`AgentSpecRoll`**: a live lease whose `specHash` is not `AgentSpecs.hash(compose(agent))` gets
+  `PUT …/leases/{id}/spec`; the container restarts on the same volume and the daemon resumes the same
+  generation. qits-system hashes the spec it is sent exactly as `AgentSpecs.hash` does (sha256 of
+  the canonical JSON); its answers redact env values, so the hash is how a rotated token is seen.
+- **`AgentLeaseSweep`**: every `qits.agents.runtime.sweep-interval` (30 s) and at once after every
+  committed `ProjectAgentChanged` (a CDI event fired beside the bus publish in `Agents.changed`): the
+  RUNNING rows applied or observed and rolled, the RETIRED rows holding a lease ended. Idempotent.
+
+**The spec** (`AgentSpecs.compose`): image `registry.qits.<domain>/qits/agent:<AgentImage.VERSION>`
+from the pinned `qits-agents-daemon-protocol`; user `1000`; limits the front desk's (memory and
+swap `4g`, `oomScoreAdj 800`); and exactly this env:
+
+| Name | Value |
+|---|---|
+| `QITS_AGENTS_DAEMON_PROJECT` | the project slug |
+| `QITS_AGENTS_DAEMON_AGENT_NAME` | the agent's name |
+| `QITS_AGENTS_DAEMON_WRAPPER` | `<slug>-<slug>`, the wrapper repository |
+| `QITS_AGENTS_DAEMON_GIT_BASE` | `https://githost.qits.<domain>/git/<slug>` |
+| `QITS_AGENTS_DAEMON_SERVICE_URL` | `https://agents.qits.<domain>/agents` |
+| `QITS_TOKEN` | the row's `token_value` |
+| `QITS_DOMAIN` | the domain |
+| `GIT_CONFIG_GLOBAL` | `/etc/qits-gitconfig` |
+| `QITS_GIT_AUTH_HOST` | `githost.qits.<domain>` |
+
+Never `HOME`, `CLAUDE_CONFIG_DIR` or `BUILDKIT_HOST`: the policy owns them and qits-system refuses a
+spec naming one.
+
 ## The data
 
-`domain/src/main/resources/db/agents/migration/V1__agents.sql`, schema `agents`, diagram in
+`domain/src/main/resources/db/agents/migration/V1__agents.sql` and `V2__agent_lease.sql`, schema
+`agents`, diagram in
 `docs/database/`:
 
 - `agent` — one declared agent: its declaration (`description`, `brief`, `recovery_prompt`,
   `model`, `effort`, `declaration_hash`), `generation`, `desired_state` (RUNNING, RETIRED), the
   runtime's report (`reported_state` UNKNOWN until the first, then STARTING, IDLE, BUSY, EXITED or
   FAILED; `reported_generation`, `session_id`, `reported_detail`, `reported_at`) and its credential
-  (`token_id`, `token_subject`, `token_value`). Unique per project and name.
+  (`token_id`, `token_subject`, `token_value`); `lease_id` (V2), the AGENT lease the runtime last
+  asked for. Unique per project and name.
 - `agent_claim` — an item the agent holds, open while `released_at` is null; at most one open per
   agent and item. Fed from qits-projects' `EntityAssigned` (below).
 - `agent_turn` — the agent's inbox: RECOVERY (from the reconcile), ASSIGNED and COMMENTED (from
@@ -102,7 +147,8 @@ nothing over an unchanged roster.
   another agent's credential included, is 403. The agent's harness holds no `qits:system`
   credential, so its in-container daemon calls these doors with the agent's own token.
 
-The token value is served by `launch` and nowhere else.
+The token value is served by `launch` and nowhere else; besides that door it leaves this service
+only in the agent's own lease spec, to qits-system.
 
 ## Claims and turns from qits-projects' events
 

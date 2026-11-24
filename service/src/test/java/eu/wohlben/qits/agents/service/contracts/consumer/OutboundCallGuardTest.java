@@ -68,7 +68,9 @@ class OutboundCallGuardTest {
           "qits-projects",
           new ConsumerPactRows(ProjectsPactTest.PROJECTS, ProjectsPactTest.PACT.rows(), ""),
           "qits-idp",
-          new ConsumerPactRows(IdpPactTest.IDP, IdpPactTest.PACT.rows(), "/idp"));
+          new ConsumerPactRows(IdpPactTest.IDP, IdpPactTest.PACT.rows(), "/idp"),
+          "qits-system",
+          new ConsumerPactRows(SystemPactTest.SYSTEM, SystemPactTest.PACT.rows(), ""));
 
   private record ConsumerPactRows(
       GoldenMasters masters, List<GoldenInteraction> rows, String urlPath) {}
@@ -76,7 +78,7 @@ class OutboundCallGuardTest {
   private static final JavaClasses PRODUCTION =
       new ClassFileImporter()
           .withImportOption(new ImportOption.DoNotIncludeTests())
-          .importPackages("eu.wohlben.qits.agents.service");
+          .importPackages("eu.wohlben.qits.agents.service", "eu.wohlben.qits.agents.runtime");
 
   @Test
   void noProductionClassDialsAnotherServiceOutsideTheNamedOnes() {

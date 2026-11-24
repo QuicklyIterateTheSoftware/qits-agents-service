@@ -20,6 +20,8 @@ userflows: qits-agents
 #   qits-idp-service       quarkus-oidc's discovery and JWKS reads, the `qits` client's mint, and the
 #                          agents' token commission and revocation (contracts/consumer/IdpPactTest);
 #   qits-projects-service  the reconcile's project list (contracts/consumer/ProjectsPactTest);
+#   qits-system-service    the runtime's AGENT leases: create, read, list, roll and end
+#                          (contracts/consumer/SystemPactTest, qits-2519);
 #   qits-events-service    the outbox publish of ProjectAgentChanged, through qits-eventstream
 #                          (EventstreamPactTest, from the library's kit).
 contracts:
@@ -33,3 +35,4 @@ contracts:
     qits-events-service: { packages: [maven] }
     qits-idp-service: { packages: [maven] }
     qits-projects-service: { packages: [maven] }
+    qits-system-service: { packages: [maven] }

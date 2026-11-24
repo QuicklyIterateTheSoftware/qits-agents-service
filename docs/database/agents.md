@@ -15,6 +15,7 @@ erDiagram
     enum desired_state "not null"
     string effort "length 32"
     int generation "not null"
+    uuid lease_id
     string model "length 64"
     string name "not null, length 32"
     uuid project_id "not null"

@@ -1,5 +1,6 @@
 package eu.wohlben.qits.agents.service.api;
 
+import eu.wohlben.qits.agents.runtime.SystemLeasesApi;
 import eu.wohlben.qits.agents.service.events.EntityAssigned;
 import eu.wohlben.qits.agents.service.events.EntityCommented;
 import eu.wohlben.qits.agents.service.events.ProjectAgentChanged;
@@ -16,8 +17,8 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
  * binary that is a 500 behind a green JVM suite.
  *
  * <p><b>A new served type joins this list in the commit that adds it</b>; ApiWireReflectionTest
- * fails naming any nested type of {@link AgentsWire} and any record of {@link ProjectsApi} or
- * {@link IdpTokensApi} left out.
+ * fails naming any nested type of {@link AgentsWire} and any record of {@link ProjectsApi},
+ * {@link IdpTokensApi} or {@link SystemLeasesApi} left out.
  */
 @RegisterForReflection(
     targets = {
@@ -43,7 +44,12 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
       ProjectsApi.Entry.class,
       ProjectsApi.Project.class,
       IdpTokensApi.Commission.class,
-      IdpTokensApi.Commissioned.class
+      IdpTokensApi.Commissioned.class,
+      SystemLeasesApi.LeaseRequest.class,
+      SystemLeasesApi.SpecRequest.class,
+      SystemLeasesApi.LeaseSpec.class,
+      SystemLeasesApi.Limits.class,
+      SystemLeasesApi.Lease.class
     },
     classNames = {
       "eu.wohlben.qits.eventstream.control.EventPage",

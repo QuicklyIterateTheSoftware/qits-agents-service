@@ -92,6 +92,13 @@ public class ProjectAgent extends PanacheEntityBase {
   @Column(name = "token_value", columnDefinition = "text")
   public String tokenValue;
 
+  /**
+   * The qits-system AGENT lease the runtime last asked for (qits-2519), null when there is none.
+   * Written only by the runtime, through {@code Agents.storeLease} and {@code Agents.clearLease}.
+   */
+  @Column(name = "lease_id")
+  public UUID leaseId;
+
   @Column(name = "created_at", nullable = false)
   public Instant createdAt;
 
