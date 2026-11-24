@@ -31,7 +31,12 @@ public class CommentNotices {
   @Inject Agents agents;
 
   /** Applies one comment. A payload that names no usable item is logged and ignored. */
-  @Transactional
+  // Its own transaction on the agents datasource, never the listener's: qits-eventstream runs a
+  // durable listener inside its claiming transaction on the eventstream outbox, and joining that
+  // from a second non-XA datasource fails every event ("Exception in association of connection to
+  // existing transaction", 2026.1124.52642). A redelivery after a failed claim commit is harmless:
+  // the open-claim check and agent_turn_source_uq make the effect idempotent.
+  @Transactional(Transactional.TxType.REQUIRES_NEW)
   public void commented(EntityCommented event) {
     String root = event.rootEntityId() != null ? event.rootEntityId() : event.entityId();
     UUID rootId = Assignments.Ids.uuid(root);

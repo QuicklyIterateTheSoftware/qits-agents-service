@@ -11,8 +11,14 @@ import eu.wohlben.qits.agents.service.entity.TurnKind;
 import eu.wohlben.qits.agents.service.support.Fixtures;
 import eu.wohlben.qits.eventstream.control.CanonicalJson;
 import eu.wohlben.qits.eventstream.control.EventFrame;
+import io.agroal.api.AgroalDataSource;
+import io.quarkus.agroal.DataSource;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,6 +50,10 @@ class ClaimsAndTurnsFromEventsTest {
   @Inject Agents agents;
 
   @Inject Fixtures fixtures;
+
+  @Inject
+  @DataSource("eventstream")
+  AgroalDataSource eventstream;
 
   @BeforeEach
   void arrange() {
@@ -111,6 +121,44 @@ class ClaimsAndTurnsFromEventsTest {
   }
 
   // --- EntityAssigned --------------------------------------------------------------------------
+
+  /**
+   * The way qits-eventstream really calls a durable listener: inside its claiming transaction, with
+   * the eventstream outbox datasource already enlisted. 2026.1124.52642 joined that transaction from
+   * the agents datasource and failed every event; the frames-only tests above could not see it.
+   */
+  @Test
+  void aListenerCalledInsideTheClaimingTransactionStillWrites() {
+    UUID assignedEvent = UUID.randomUUID();
+    UUID commentedEvent = UUID.randomUUID();
+    QuarkusTransaction.requiringNew()
+        .run(
+            () -> {
+              enlistEventstream();
+              assignments.onFrame(assigned(assignedEvent, "developer", null, "person-sub", "Ben"));
+            });
+    QuarkusTransaction.requiringNew()
+        .run(
+            () -> {
+              enlistEventstream();
+              comments.onFrame(commented(commentedEvent, "ada", "Ada", null, "ada"));
+            });
+
+    assertEquals(1, claims(DEVELOPER).size());
+    assertEquals(
+        List.of(TurnKind.ASSIGNED, TurnKind.COMMENTED),
+        turns(DEVELOPER).stream().map(t -> t.kind).toList());
+  }
+
+  private void enlistEventstream() {
+    try (Connection connection = eventstream.getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("select 1");
+    } catch (SQLException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
 
   @Test
   void anAssignmentByAPersonOpensAClaimAndQueuesTheAssignedText() {
