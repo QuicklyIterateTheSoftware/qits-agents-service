@@ -95,3 +95,20 @@ bump lands, regenerate the pact with `-Dgolden.update=true`.
 `stories/**IT` boot the PACKAGED service (`-DskipITs=false`) against `idp.MockIdp` with the OIDC
 tenant on and the boot reconcile off, and write their reports under `service/target/userstories/`.
 The java-service release recipe requires that directory and publishes it as `@userflows/qits-agents`.
+
+## What the JVM suite cannot see
+
+Three things broke only once deployed (qits-2518), each green in `./mvnw verify`. Keep the guards:
+
+- **The roster in the native image.** Quarkus switches GraalVM's service-loader feature off, so
+  `AgentRosters.load` found nothing in 2026.1123.194720. `quarkus.native.auto-service-loader-registration=true`
+  fixes it; `RosterReadiness` (`agent-rosters`) is DOWN when no roster loads, and `AgentRuntimeIT`
+  asserts it against the packaged artifact.
+- **`exposure: private`.** qits-projects is private (qits-1980); a public deployment timed out on
+  `projects.qits.<domain>` → 100.96.0.1. Never move this service back to public while it calls a
+  private peer.
+- **Listener writes in their own transaction.** qits-eventstream calls a durable listener inside
+  its claim transaction on the `eventstream` datasource; joining it from the `agents` datasource
+  failed every event. `Assignments` and `CommentNotices` are `REQUIRES_NEW`;
+  `ClaimsAndTurnsFromEventsTest.aListenerCalledInsideTheClaimingTransactionStillWrites` reproduces
+  the outer transaction. Any new listener follows the same rule.
