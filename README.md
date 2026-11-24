@@ -19,6 +19,8 @@ It reaches qits-projects only through the `--dns` qits-deployments hands a priva
 (the private edge's VIP, then an upstream): a task created without one resolves
 `projects.qits.<domain>` to the public tunnel address 100.96.0.1 (qits-2273), unreachable from
 qits-private, and every call times out (qits-2586).
+qits-deployments logs `dev-qits-agents resolves through the private edge: resolvers [...]` when it
+hands them, and `... gets no private-edge resolver: <why>` when it cannot.
 
 ```
  roster jars (ServiceLoader) ──▶ RosterReconcile ──▶ agent / agent_turn (RECOVERY)
