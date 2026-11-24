@@ -25,7 +25,7 @@
          one. -->
     <groupId>eu.wohlben.qits</groupId>
     <artifactId>qits-agents</artifactId>
-    <version>2026.1124.133343</version>
+    <version>2026.1124.213431</version>
     <packaging>pom</packaging>
     <name>qits-agents</name>
 
