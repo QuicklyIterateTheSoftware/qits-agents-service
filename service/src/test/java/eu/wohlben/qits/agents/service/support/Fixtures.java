@@ -5,11 +5,23 @@ import eu.wohlben.qits.agents.service.control.ProjectDirectory;
 import eu.wohlben.qits.agents.service.entity.AgentClaim;
 import eu.wohlben.qits.agents.service.entity.AgentTurn;
 import eu.wohlben.qits.agents.service.entity.DesiredState;
+import eu.wohlben.qits.agents.service.entity.EvalActivity;
+import eu.wohlben.qits.agents.service.entity.EvalBlock;
+import eu.wohlben.qits.agents.service.entity.EvalExit;
+import eu.wohlben.qits.agents.service.entity.EvalItem;
+import eu.wohlben.qits.agents.service.entity.EvalRequest;
+import eu.wohlben.qits.agents.service.entity.EvalRequestState;
+import eu.wohlben.qits.agents.service.entity.EvalRun;
+import eu.wohlben.qits.agents.service.entity.EvalTransition;
+import eu.wohlben.qits.agents.service.entity.EvalUsage;
+import eu.wohlben.qits.agents.service.entity.EvalUsageMessage;
+import eu.wohlben.qits.agents.service.entity.EvalWait;
 import eu.wohlben.qits.agents.service.entity.ProjectAgent;
 import eu.wohlben.qits.agents.service.entity.ReportedState;
 import eu.wohlben.qits.agents.service.entity.TurnKind;
 import eu.wohlben.qits.eventstream.QitsEvent;
 import eu.wohlben.qits.eventstream.QitsEventBus;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import io.quarkus.test.junit.QuarkusMock;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
@@ -37,12 +49,51 @@ public class Fixtures {
     return "tok-project-agent-" + project + "-" + name;
   }
 
-  /** Deletes every row of the three tables. */
+  /** Deletes every row of the three tables and of the evaluation ledger. */
   @Transactional
   public void clear() {
     AgentTurn.deleteAll();
     AgentClaim.deleteAll();
     ProjectAgent.deleteAll();
+    clearLedger();
+  }
+
+  /** Deletes every row of the evaluation ledger (V4, qits-2521). */
+  @Transactional
+  public void clearLedger() {
+    EvalItem.deleteAll();
+    EvalTransition.deleteAll();
+    EvalBlock.deleteAll();
+    EvalRequest.deleteAll();
+    EvalRequestState.deleteAll();
+    EvalRun.deleteAll();
+    EvalActivity.deleteAll();
+    EvalExit.deleteAll();
+    EvalWait.deleteAll();
+    EvalUsage.deleteAll();
+    EvalUsageMessage.deleteAll();
+  }
+
+  /** Rows of the evaluation ledger (or any entity), persisted as given. */
+  @Transactional
+  public void persist(PanacheEntityBase... rows) {
+    for (PanacheEntityBase row : rows) {
+      row.persist();
+    }
+  }
+
+  /** Every row of one ledger table, detached. */
+  @Transactional
+  public <T> List<T> rows(Class<T> type) {
+    return EvalItem.getEntityManager()
+        .createQuery("from " + type.getSimpleName(), type)
+        .getResultList();
+  }
+
+  /** The project agents' recorded transcript usage, by session and message id. */
+  @Transactional
+  public List<EvalUsageMessage> usageMessages() {
+    return EvalUsageMessage.list("order by sessionId, messageId");
   }
 
   /** A RUNNING agent of {@link #PROJECT}, holding a token, inserted directly (no event). */

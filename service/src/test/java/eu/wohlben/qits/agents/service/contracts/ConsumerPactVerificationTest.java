@@ -129,4 +129,9 @@ class ConsumerPactVerificationTest {
   Map<String, String> aRunningAgentWithAPendingWaitTurnCallingAsItself() {
     return states.params(ProviderStates.A_RUNNING_AGENT_WITH_A_PENDING_WAIT_TURN_CALLING_AS_ITSELF);
   }
+
+  @State(ProviderStates.AN_EVALUATION_LEDGER)
+  Map<String, String> anEvaluationLedger() {
+    return states.params(ProviderStates.AN_EVALUATION_LEDGER);
+  }
 }

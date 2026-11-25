@@ -110,9 +110,8 @@ spec naming one.
 
 ## The data
 
-`domain/src/main/resources/db/agents/migration/V1__agents.sql` and `V2__agent_lease.sql`, schema
-`agents`, diagram in
-`docs/database/`:
+`domain/src/main/resources/db/agents/migration/V1__agents.sql` to `V4__evaluation.sql`, schema
+`agents`, diagram in `docs/database/`:
 
 - `agent` — one declared agent: its declaration (`description`, `brief`, `recovery_prompt`,
   `model`, `effort`, `declaration_hash`), `generation`, `desired_state` (RUNNING, RETIRED), the
@@ -124,6 +123,7 @@ spec naming one.
   agent and item. Fed from qits-projects' `EntityAssigned` (below).
 - `agent_turn` — the agent's inbox: RECOVERY (from the reconcile), ASSIGNED and COMMENTED (from
   qits-projects' events, keyed by `source_event_id`), acknowledged by `delivered_at`.
+- `eval_*` (V4) — the evaluation ledger, below: raw facts only, every row keyed by its source.
 
 ## The doors (`/agents/api`)
 
@@ -138,6 +138,8 @@ spec naming one.
 | `POST …/{name}/turns/{turnId}/delivered` | 204, idempotent; 404 a turn of another agent | runner |
 | `GET …/{name}/launch` | `project, projectId, name, generation, brief, model, effort, sessionId, token, tokenSubject`; 409 when RETIRED or no credential yet | runner |
 | `PUT …/{name}/report` `{generation, state, sessionId?, detail?}` | 204; 400 no generation or an unreportable state; 409 a generation newer than the row's | runner |
+| `POST …/{name}/usage` `{sessionId, messages: [{messageId, workQualifiedId?, model, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, at}]}` | 204; each message recorded once per session (`eval_usage_message`, a resend is absorbed); 400 no session, no list, more than 500 messages, or a message without id, model or time | runner |
+| `GET /projects/{project}/evaluation?since=&until=` | the evaluation report (below), JSON, or Markdown for `Accept: text/markdown`; 400 an unreadable instant or `until` not after `since`; 404 unknown project | read |
 | `GET /me` | the caller's agent by `token_subject = sub`: `project, projectId, name, generation`; 404 for anyone else | `qits:agent`, `qits:admin-agent`, `qits:desk-admin`, `qits:admin`, `qits:system` |
 
 - **read**: `qits:admin`, `qits:admin-agent`, `qits:desk-admin`, `qits:desk`, `qits:agent`,
@@ -167,6 +169,48 @@ Two durable consumptions (`bus/`), both consuming from now (no backfill), applie
 
 A redelivered event changes nothing: a claim opened at the event's `assignedAt` is never opened
 again, and a turn is unique per agent and `source_event_id`. Nothing new is published.
+
+## The evaluation: WORKSPACE against PROJECT_AGENT (epic qits-2521)
+
+The two delivery models — per-ticket workspaces the desk dispatches (`WORKSPACE`) and a roster's
+long-running agent (`PROJECT_AGENT`) — compared on the figures of the epic's page "Comparison
+criteria". Read it with
+
+    curl -H "Authorization: Bearer $QITS_TOKEN" -H 'Accept: text/markdown' \
+      "https://agents.qits.$QITS_DOMAIN/agents/api/projects/qits/evaluation"
+
+(`?since=<instant>&until=<instant>`; `since` defaults to `qits.agents.evaluation.since`,
+`2026-11-25T00:00:00Z`, `until` to now; drop the `Accept` header for JSON).
+
+**The ledger** keeps raw facts, and `control/Evaluation` derives every figure at read time, so a
+changed definition needs a code change and no re-collection. Its writers (`control/EvaluationLedger`):
+
+| consumerId | Event | Writes |
+|---|---|---|
+| `eval-transitions` | `EntityTransitioned` (projects) | `eval_item` (identity, `<slug>-<number>`), `eval_transition` per EPIC/TICKET status entered |
+| `eval-assignments` | `EntityAssigned` (projects) | `eval_item.agent_taken_at` when the assignee is a roster agent (name or token subject) |
+| `eval-blocks` | `EntityBlockChanged` (projects) | `eval_block` per `blocked=true` |
+| `eval-requests` | `ReleaseRequestStateChanged` (projects) | `eval_request` (branches, last state), `eval_request_state` (first entry per state) |
+| `eval-builds` | `BuildStatusChanged` (qits-ci) | `eval_run` (first event, terminal event and status, request) |
+| `eval-placements` | `AgentPlaced` (workspaces) | `eval_item.workspace_taken_at` |
+| `eval-activity` | `AgentActivityChanged` (workspaces) | `eval_activity`, model WORKSPACE |
+| `eval-exits` | `AgentHarnessExited` (workspaces) | `eval_exit` when `stoppedBy` is SELF or KILLED |
+| `eval-waits` | `AgentWaitClosed`, `ProjectAgentWaitClosed` (workspaces) | `eval_wait` |
+| `eval-usage` | `AgentUsageRecorded` (workspaces) | `eval_usage` |
+
+Every one replays from the epoch (the backfill) and settles an event older than
+`qits.agents.evaluation.since` without a write. The project agent's own state is not consumed:
+`control/Agents.changed` writes an `eval_activity` row (model PROJECT_AGENT) beside
+`ProjectAgentChanged`, and its usage arrives through `POST …/usage` into `eval_usage_message`.
+
+**The rules** the door applies (see `control/Evaluation`): an EPIC or TICKET is WORKSPACE's when
+placed, PROJECT_AGENT's when assigned to a roster agent, at or after `since`; both is BOTH,
+listed as `doubleWorked` and left out of both models. A request is an item's by a branch
+`ticket/<qid>` or `epic/<qid>` (or that plus `-<name>`); a terminal CI run of the request gives each
+attributed item `1/n` of the run and its seconds, `n` being all its branches. Nothing after `until`
+counts. A project agent is idle only while it holds an open claim. Percentiles are nearest-rank,
+null without data; per-verified figures are null with nothing verified; the project agent's
+overhead (usage with no item) counts in its `tokensPerVerified`.
 
 ## The event
 

@@ -105,6 +105,44 @@
           }
         },
         {
+          "operationId": "recordAgentUsage",
+          "method": "POST",
+          "path": "/agents/api/projects/{project}/agents/{name}/usage",
+          "body": {
+            "sessionId": "session-contract",
+            "messages": [
+              {
+                "messageId": "msg_contract_1",
+                "workQualifiedId": "qits-101",
+                "model": "claude-opus-5-5",
+                "inputTokens": 12,
+                "outputTokens": 340,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 51234,
+                "at": "2026-11-26T10:00:00Z"
+              },
+              {
+                "messageId": "msg_contract_2",
+                "workQualifiedId": null,
+                "model": "claude-opus-5-5",
+                "inputTokens": 3,
+                "outputTokens": 20,
+                "cacheCreationTokens": 100,
+                "cacheReadTokens": 0,
+                "at": "2026-11-26T10:01:00Z"
+              }
+            ]
+          },
+          "status": 204,
+          "file": null,
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
           "operationId": "reportAgent",
           "method": "PUT",
           "path": "/agents/api/projects/{project}/agents/{name}/report",
@@ -208,6 +246,47 @@
           }
         },
         {
+          "operationId": "recordAgentUsage",
+          "method": "POST",
+          "path": "/agents/api/projects/{project}/agents/{name}/usage",
+          "headers": {
+            "Authorization": "{authorization}"
+          },
+          "body": {
+            "sessionId": "session-contract",
+            "messages": [
+              {
+                "messageId": "msg_contract_1",
+                "workQualifiedId": "qits-101",
+                "model": "claude-opus-5-5",
+                "inputTokens": 12,
+                "outputTokens": 340,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 51234,
+                "at": "2026-11-26T10:00:00Z"
+              },
+              {
+                "messageId": "msg_contract_2",
+                "workQualifiedId": null,
+                "model": "claude-opus-5-5",
+                "inputTokens": 3,
+                "outputTokens": 20,
+                "cacheCreationTokens": 100,
+                "cacheReadTokens": 0,
+                "at": "2026-11-26T10:01:00Z"
+              }
+            ]
+          },
+          "status": 204,
+          "file": null,
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
           "operationId": "reportAgent",
           "method": "PUT",
           "path": "/agents/api/projects/{project}/agents/{name}/report",
@@ -291,6 +370,38 @@
             "strings": [
               "$[*].text"
             ],
+            "listFilteredTo": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "an evaluation ledger",
+      "slug": "an-evaluation-ledger",
+      "params": {
+        "project": "qits"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "getEvaluation",
+          "method": "GET",
+          "path": "/agents/api/projects/{project}/evaluation",
+          "query": {
+            "since": "2026-11-25T00:00:00Z",
+            "until": "2026-11-25T12:00:00Z"
+          },
+          "status": 200,
+          "file": "an-evaluation-ledger/getEvaluation.json",
+          "frozen": {
+            "ids": [],
+            "instants": [
+              "$.since",
+              "$.until",
+              "$.items[*].takenAt",
+              "$.items[*].verifiedAt"
+            ],
+            "strings": [],
             "listFilteredTo": null
           }
         }

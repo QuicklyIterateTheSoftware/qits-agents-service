@@ -232,4 +232,81 @@ class AgentsApiTest {
         .body("name", equalTo("developer"))
         .body("generation", equalTo(2));
   }
+
+  private static Map<String, Object> message(String id, String work, long input) {
+    Map<String, Object> message = new java.util.LinkedHashMap<>();
+    message.put("messageId", id);
+    message.put("workQualifiedId", work);
+    message.put("model", "claude-opus-5-5");
+    message.put("inputTokens", input);
+    message.put("outputTokens", 2);
+    message.put("cacheReadTokens", 3);
+    message.put("at", "2026-11-26T10:00:00Z");
+    return message;
+  }
+
+  @Test
+  void usageIsRecordedOncePerSessionAndMessage() {
+    as(self)
+        .contentType(ContentType.JSON)
+        .body(
+            Map.of(
+                "sessionId",
+                "session-7",
+                "messages",
+                List.of(message("msg_1", "qits-2565", 10), message("msg_2", null, 20))))
+        .post(DEV + "/usage")
+        .then()
+        .statusCode(204);
+    // The daemon resends after a restart: the repeat is absorbed, the new message recorded.
+    as(self)
+        .contentType(ContentType.JSON)
+        .body(
+            Map.of(
+                "sessionId",
+                "session-7",
+                "messages",
+                List.of(message("msg_1", "qits-2565", 99), message("msg_3", "qits-2565", 30))))
+        .post(DEV + "/usage")
+        .then()
+        .statusCode(204);
+
+    var recorded = fixtures.usageMessages();
+    assertEquals(List.of("msg_1", "msg_2", "msg_3"), recorded.stream().map(m -> m.messageId).toList());
+    assertEquals(10, recorded.get(0).inputTokens, "the first report of a message wins");
+    assertEquals("qits-2565", recorded.get(0).workQualifiedId);
+    assertEquals(null, recorded.get(1).workQualifiedId, "the overseer's own message");
+    assertEquals(0, recorded.get(1).cacheCreationTokens, "a missing number counts as 0");
+    assertEquals(DEVELOPER, recorded.get(2).agentId);
+    assertEquals(Instant.parse("2026-11-26T10:00:00Z"), recorded.get(2).at);
+  }
+
+  @Test
+  void usageIsRefusedWithoutSessionOrBeyond500Messages() {
+    as(self)
+        .contentType(ContentType.JSON)
+        .body(Map.of("messages", List.of(message("msg_1", null, 1))))
+        .post(DEV + "/usage")
+        .then()
+        .statusCode(400);
+    List<Map<String, Object>> many = new java.util.ArrayList<>();
+    for (int i = 0; i < 501; i++) {
+      many.add(message("msg_" + i, null, 1));
+    }
+    as(self)
+        .contentType(ContentType.JSON)
+        .body(Map.of("sessionId", "session-7", "messages", many))
+        .post(DEV + "/usage")
+        .then()
+        .statusCode(400);
+    Map<String, Object> noModel = message("msg_x", null, 1);
+    noModel.remove("model");
+    as(self)
+        .contentType(ContentType.JSON)
+        .body(Map.of("sessionId", "session-7", "messages", List.of(noModel)))
+        .post(DEV + "/usage")
+        .then()
+        .statusCode(400);
+    assertEquals(List.of(), fixtures.usageMessages());
+  }
 }

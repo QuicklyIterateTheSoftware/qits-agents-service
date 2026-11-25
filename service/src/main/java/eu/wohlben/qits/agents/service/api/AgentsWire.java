@@ -4,6 +4,7 @@ import eu.wohlben.qits.agents.service.entity.AgentClaim;
 import eu.wohlben.qits.agents.service.entity.AgentTurn;
 import eu.wohlben.qits.agents.service.entity.ProjectAgent;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -154,6 +155,27 @@ public final class AgentsWire {
    * or FAILED), and optionally the harness session and a line of detail.
    */
   public record ReportRequest(Integer generation, String state, String sessionId, String detail) {}
+
+  /**
+   * {@code POST …/usage}: a batch of the agent's transcript usage, at most 500 messages, each
+   * counted once per {@code sessionId} by its {@code messageId} (qits-2521).
+   */
+  public record UsageReport(String sessionId, List<UsageMessage> messages) {}
+
+  /**
+   * One assistant message of the agent's transcript: the Claude model ({@code message.model}), the
+   * four token counts of its {@code message.usage}, and the item its worktree names — null for the
+   * overseer's own messages.
+   */
+  public record UsageMessage(
+      String messageId,
+      String workQualifiedId,
+      String model,
+      long inputTokens,
+      long outputTokens,
+      long cacheCreationTokens,
+      long cacheReadTokens,
+      Instant at) {}
 
   /** {@code GET /me}: which agent the caller's credential is. */
   public record MeDto(String project, UUID projectId, String name, int generation) {

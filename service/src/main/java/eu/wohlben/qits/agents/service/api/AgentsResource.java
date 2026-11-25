@@ -6,8 +6,11 @@ import eu.wohlben.qits.agents.service.api.AgentsWire.ClaimDto;
 import eu.wohlben.qits.agents.service.api.AgentsWire.LaunchDto;
 import eu.wohlben.qits.agents.service.api.AgentsWire.ReportRequest;
 import eu.wohlben.qits.agents.service.api.AgentsWire.TurnDto;
+import eu.wohlben.qits.agents.service.api.AgentsWire.UsageMessage;
+import eu.wohlben.qits.agents.service.api.AgentsWire.UsageReport;
 import eu.wohlben.qits.agents.service.control.Agents;
 import eu.wohlben.qits.agents.service.control.AgentsException;
+import eu.wohlben.qits.agents.service.control.EvaluationLedger;
 import eu.wohlben.qits.agents.service.entity.DesiredState;
 import eu.wohlben.qits.agents.service.entity.ProjectAgent;
 import eu.wohlben.qits.agents.service.entity.ReportedState;
@@ -24,6 +27,7 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -35,8 +39,8 @@ import org.jboss.logging.Logger;
  * A project's agents, {@code /projects/{project}/agents}, where {@code {project}} is the project's
  * slug or id and {@code {name}} the agent's name.
  *
- * <p>The three reads (the list, one agent, its claims) carry the READ set at class level. The four
- * runner doors (turns, delivered, launch, report) carry their own set, which REPLACES it: the
+ * <p>The three reads (the list, one agent, its claims) carry the READ set at class level. The five
+ * runner doors (turns, delivered, launch, report, usage) carry their own set, which REPLACES it: the
  * operators and {@code qits:agent}, the latter held to <b>self</b> ({@link SelfOrOperator}).
  */
 @Path("/projects/{project}/agents")
@@ -54,6 +58,8 @@ public class AgentsResource {
   private static final Logger LOG = Logger.getLogger(AgentsResource.class);
 
   @Inject Agents agents;
+
+  @Inject EvaluationLedger ledger;
 
   @Inject SecurityIdentity identity;
 
@@ -180,6 +186,63 @@ public class AgentsResource {
         agent.projectSlug, agent.name, state, report.generation(), Callers.subject(identity));
   }
 
+  @POST
+  @Path("/{name}/usage")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @RolesAllowed({Roles.ADMIN, Roles.DESK_ADMIN, Roles.SYSTEM, Roles.AGENT})
+  @Operation(
+      operationId = "recordAgentUsage",
+      summary = "The agent's transcript usage, each message counted once per session")
+  @APIResponse(responseCode = "204", description = "Recorded; a message already recorded is skipped")
+  @APIResponse(
+      responseCode = "400",
+      description = "No session, no messages list, more than 500 messages, or a message without id,"
+          + " model or time")
+  @APIResponse(responseCode = "403", description = "Another agent's credential")
+  @APIResponse(responseCode = "404", description = "The project declares no such agent")
+  public void usage(
+      @PathParam("project") String project,
+      @PathParam("name") String name,
+      UsageReport report) {
+    ProjectAgent agent = self(project, name);
+    if (report == null || report.sessionId() == null || report.sessionId().isBlank()) {
+      throw AgentsException.badRequest("a JSON body with sessionId and messages is required");
+    }
+    if (report.messages() == null) {
+      throw AgentsException.badRequest("messages is required");
+    }
+    if (report.messages().size() > EvaluationLedger.MAX_USAGE_MESSAGES) {
+      throw AgentsException.badRequest(
+          "at most "
+              + EvaluationLedger.MAX_USAGE_MESSAGES
+              + " messages per call, not "
+              + report.messages().size());
+    }
+    List<EvaluationLedger.UsageMessage> messages = new ArrayList<>();
+    for (UsageMessage message : report.messages()) {
+      if (message == null
+          || blank(message.messageId())
+          || blank(message.model())
+          || message.at() == null) {
+        throw AgentsException.badRequest("every message needs messageId, model and at");
+      }
+      messages.add(
+          new EvaluationLedger.UsageMessage(
+              message.messageId(),
+              message.workQualifiedId(),
+              message.model(),
+              message.inputTokens(),
+              message.outputTokens(),
+              message.cacheCreationTokens(),
+              message.cacheReadTokens(),
+              message.at()));
+    }
+    int recorded = ledger.usage(agent.id, report.sessionId(), messages);
+    LOG.debugf(
+        "usage of %s/%s session %s: %d of %d messages recorded",
+        agent.projectSlug, agent.name, report.sessionId(), recorded, messages.size());
+  }
+
   // --- helpers ---------------------------------------------------------------------------------
 
   private ProjectAgent agent(String project, String name) {
@@ -194,6 +257,10 @@ public class AgentsResource {
     ProjectAgent agent = agent(project, name);
     SelfOrOperator.check(identity, agent);
     return agent;
+  }
+
+  private static boolean blank(String value) {
+    return value == null || value.isBlank();
   }
 
   private static ReportedState reportable(String state) {
