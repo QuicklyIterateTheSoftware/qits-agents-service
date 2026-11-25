@@ -5,6 +5,17 @@ import eu.wohlben.qits.agents.service.control.ProjectDirectory;
 import eu.wohlben.qits.agents.service.entity.AgentClaim;
 import eu.wohlben.qits.agents.service.entity.AgentTurn;
 import eu.wohlben.qits.agents.service.entity.DesiredState;
+import eu.wohlben.qits.agents.service.entity.EvalActivity;
+import eu.wohlben.qits.agents.service.entity.EvalBlock;
+import eu.wohlben.qits.agents.service.entity.EvalExit;
+import eu.wohlben.qits.agents.service.entity.EvalItem;
+import eu.wohlben.qits.agents.service.entity.EvalRequest;
+import eu.wohlben.qits.agents.service.entity.EvalRequestState;
+import eu.wohlben.qits.agents.service.entity.EvalRun;
+import eu.wohlben.qits.agents.service.entity.EvalTransition;
+import eu.wohlben.qits.agents.service.entity.EvalUsage;
+import eu.wohlben.qits.agents.service.entity.EvalUsageMessage;
+import eu.wohlben.qits.agents.service.entity.EvalWait;
 import eu.wohlben.qits.agents.service.entity.ProjectAgent;
 import eu.wohlben.qits.agents.service.entity.ReportedState;
 import eu.wohlben.qits.agents.service.entity.TurnKind;
@@ -37,12 +48,35 @@ public class Fixtures {
     return "tok-project-agent-" + project + "-" + name;
   }
 
-  /** Deletes every row of the three tables. */
+  /** Deletes every row of the three tables and of the evaluation ledger. */
   @Transactional
   public void clear() {
     AgentTurn.deleteAll();
     AgentClaim.deleteAll();
     ProjectAgent.deleteAll();
+    clearLedger();
+  }
+
+  /** Deletes every row of the evaluation ledger (V4, qits-2521). */
+  @Transactional
+  public void clearLedger() {
+    EvalItem.deleteAll();
+    EvalTransition.deleteAll();
+    EvalBlock.deleteAll();
+    EvalRequest.deleteAll();
+    EvalRequestState.deleteAll();
+    EvalRun.deleteAll();
+    EvalActivity.deleteAll();
+    EvalExit.deleteAll();
+    EvalWait.deleteAll();
+    EvalUsage.deleteAll();
+    EvalUsageMessage.deleteAll();
+  }
+
+  /** The project agents' recorded transcript usage, by session and message id. */
+  @Transactional
+  public List<EvalUsageMessage> usageMessages() {
+    return EvalUsageMessage.list("order by sessionId, messageId");
   }
 
   /** A RUNNING agent of {@link #PROJECT}, holding a token, inserted directly (no event). */

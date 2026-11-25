@@ -160,6 +160,38 @@ components:
       type: string
       format: uuid
       pattern: "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+    UsageMessage:
+      type: object
+      properties:
+        messageId:
+          type: string
+        workQualifiedId:
+          type: string
+        model:
+          type: string
+        inputTokens:
+          type: integer
+          format: int64
+        outputTokens:
+          type: integer
+          format: int64
+        cacheCreationTokens:
+          type: integer
+          format: int64
+        cacheReadTokens:
+          type: integer
+          format: int64
+        at:
+          $ref: "#/components/schemas/Instant"
+    UsageReport:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/UsageMessage"
   securitySchemes:
     SecurityScheme:
       type: openIdConnect
@@ -460,6 +492,47 @@ paths:
           description: Another agent's credential
         "404":
           description: "No such agent, or a turn of another agent"
+        "401":
+          description: Not Authorized
+      tags:
+      - Agents Resource
+      security:
+      - SecurityScheme:
+        - qits:admin
+        - qits:desk-admin
+        - qits:system
+        - qits:agent
+  /agents/api/projects/{project}/agents/{name}/usage:
+    post:
+      summary: "The agent's transcript usage, each message counted once per session"
+      operationId: recordAgentUsage
+      parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: project
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UsageReport"
+        required: true
+      responses:
+        "204":
+          description: Recorded; a message already recorded is skipped
+        "400":
+          description: "No session, no messages list, more than 500 messages, or a\
+            \ message without id, model or time"
+        "403":
+          description: Another agent's credential
+        "404":
+          description: The project declares no such agent
         "401":
           description: Not Authorized
       tags:

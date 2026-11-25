@@ -110,9 +110,8 @@ spec naming one.
 
 ## The data
 
-`domain/src/main/resources/db/agents/migration/V1__agents.sql` and `V2__agent_lease.sql`, schema
-`agents`, diagram in
-`docs/database/`:
+`domain/src/main/resources/db/agents/migration/V1__agents.sql` to `V4__evaluation.sql`, schema
+`agents`, diagram in `docs/database/`:
 
 - `agent` — one declared agent: its declaration (`description`, `brief`, `recovery_prompt`,
   `model`, `effort`, `declaration_hash`), `generation`, `desired_state` (RUNNING, RETIRED), the
@@ -138,6 +137,7 @@ spec naming one.
 | `POST …/{name}/turns/{turnId}/delivered` | 204, idempotent; 404 a turn of another agent | runner |
 | `GET …/{name}/launch` | `project, projectId, name, generation, brief, model, effort, sessionId, token, tokenSubject`; 409 when RETIRED or no credential yet | runner |
 | `PUT …/{name}/report` `{generation, state, sessionId?, detail?}` | 204; 400 no generation or an unreportable state; 409 a generation newer than the row's | runner |
+| `POST …/{name}/usage` `{sessionId, messages: [{messageId, workQualifiedId?, model, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, at}]}` | 204; each message recorded once per session (`eval_usage_message`, a resend is absorbed); 400 no session, no list, more than 500 messages, or a message without id, model or time | runner |
 | `GET /me` | the caller's agent by `token_subject = sub`: `project, projectId, name, generation`; 404 for anyone else | `qits:agent`, `qits:admin-agent`, `qits:desk-admin`, `qits:admin`, `qits:system` |
 
 - **read**: `qits:admin`, `qits:admin-agent`, `qits:desk-admin`, `qits:desk`, `qits:agent`,

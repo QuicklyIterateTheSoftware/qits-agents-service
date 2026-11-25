@@ -55,6 +55,116 @@
       ]
     },
     {
+      "entity" : "eu.wohlben.qits.agents.service.entity.EvalActivity",
+      "table" : "eval_activity",
+      "marking" : "technical",
+      "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
+      "projectionOf" : null,
+      "knownGap" : null,
+      "dtos" : [ ],
+      "operations" : [ ]
+    },
+    {
+      "entity" : "eu.wohlben.qits.agents.service.entity.EvalBlock",
+      "table" : "eval_block",
+      "marking" : "technical",
+      "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
+      "projectionOf" : null,
+      "knownGap" : null,
+      "dtos" : [ ],
+      "operations" : [ ]
+    },
+    {
+      "entity" : "eu.wohlben.qits.agents.service.entity.EvalExit",
+      "table" : "eval_exit",
+      "marking" : "technical",
+      "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
+      "projectionOf" : null,
+      "knownGap" : null,
+      "dtos" : [ ],
+      "operations" : [ ]
+    },
+    {
+      "entity" : "eu.wohlben.qits.agents.service.entity.EvalItem",
+      "table" : "eval_item",
+      "marking" : "technical",
+      "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
+      "projectionOf" : null,
+      "knownGap" : null,
+      "dtos" : [ ],
+      "operations" : [ ]
+    },
+    {
+      "entity" : "eu.wohlben.qits.agents.service.entity.EvalRequest",
+      "table" : "eval_request",
+      "marking" : "technical",
+      "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
+      "projectionOf" : null,
+      "knownGap" : null,
+      "dtos" : [ ],
+      "operations" : [ ]
+    },
+    {
+      "entity" : "eu.wohlben.qits.agents.service.entity.EvalRequestState",
+      "table" : "eval_request_state",
+      "marking" : "technical",
+      "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
+      "projectionOf" : null,
+      "knownGap" : null,
+      "dtos" : [ ],
+      "operations" : [ ]
+    },
+    {
+      "entity" : "eu.wohlben.qits.agents.service.entity.EvalRun",
+      "table" : "eval_run",
+      "marking" : "technical",
+      "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
+      "projectionOf" : null,
+      "knownGap" : null,
+      "dtos" : [ ],
+      "operations" : [ ]
+    },
+    {
+      "entity" : "eu.wohlben.qits.agents.service.entity.EvalTransition",
+      "table" : "eval_transition",
+      "marking" : "technical",
+      "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
+      "projectionOf" : null,
+      "knownGap" : null,
+      "dtos" : [ ],
+      "operations" : [ ]
+    },
+    {
+      "entity" : "eu.wohlben.qits.agents.service.entity.EvalUsage",
+      "table" : "eval_usage",
+      "marking" : "technical",
+      "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
+      "projectionOf" : null,
+      "knownGap" : null,
+      "dtos" : [ ],
+      "operations" : [ ]
+    },
+    {
+      "entity" : "eu.wohlben.qits.agents.service.entity.EvalUsageMessage",
+      "table" : "eval_usage_message",
+      "marking" : "technical",
+      "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
+      "projectionOf" : null,
+      "knownGap" : null,
+      "dtos" : [ ],
+      "operations" : [ ]
+    },
+    {
+      "entity" : "eu.wohlben.qits.agents.service.entity.EvalWait",
+      "table" : "eval_wait",
+      "marking" : "technical",
+      "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
+      "projectionOf" : null,
+      "knownGap" : null,
+      "dtos" : [ ],
+      "operations" : [ ]
+    },
+    {
       "entity" : "eu.wohlben.qits.agents.service.entity.ProjectAgent",
       "table" : "agent",
       "marking" : "domain",
@@ -97,6 +207,12 @@
           "kind" : "assembler",
           "via" : null,
           "site" : "AgentsResource.turns(String, String, boolean)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.EvaluationLedger$UsageMessage",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "AgentsResource.usage(String, String, UsageReport)"
         }
       ],
       "operations" : [
@@ -147,6 +263,14 @@
           "dto" : "eu.wohlben.qits.agents.service.api.AgentsWire$AgentSummaryDto",
           "kind" : "returns",
           "cardinality" : "collection"
+        },
+        {
+          "operationId" : "recordAgentUsage",
+          "method" : "POST",
+          "path" : "/projects/{project}/agents/{name}/usage",
+          "dto" : "eu.wohlben.qits.agents.service.control.EvaluationLedger$UsageMessage",
+          "kind" : "body",
+          "cardinality" : "single"
         }
       ]
     }

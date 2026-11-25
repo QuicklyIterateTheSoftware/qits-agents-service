@@ -29,6 +29,8 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
       AgentsWire.TurnDto.class,
       AgentsWire.LaunchDto.class,
       AgentsWire.ReportRequest.class,
+      AgentsWire.UsageReport.class,
+      AgentsWire.UsageMessage.class,
       AgentsWire.MeDto.class,
       AgentsWire.ErrorBody.class,
       ProjectAgentChanged.class,

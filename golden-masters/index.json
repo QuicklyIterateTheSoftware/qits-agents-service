@@ -105,6 +105,44 @@
           }
         },
         {
+          "operationId": "recordAgentUsage",
+          "method": "POST",
+          "path": "/agents/api/projects/{project}/agents/{name}/usage",
+          "body": {
+            "sessionId": "session-contract",
+            "messages": [
+              {
+                "messageId": "msg_contract_1",
+                "workQualifiedId": "qits-101",
+                "model": "claude-opus-5-5",
+                "inputTokens": 12,
+                "outputTokens": 340,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 51234,
+                "at": "2026-11-26T10:00:00Z"
+              },
+              {
+                "messageId": "msg_contract_2",
+                "workQualifiedId": null,
+                "model": "claude-opus-5-5",
+                "inputTokens": 3,
+                "outputTokens": 20,
+                "cacheCreationTokens": 100,
+                "cacheReadTokens": 0,
+                "at": "2026-11-26T10:01:00Z"
+              }
+            ]
+          },
+          "status": 204,
+          "file": null,
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
           "operationId": "reportAgent",
           "method": "PUT",
           "path": "/agents/api/projects/{project}/agents/{name}/report",
@@ -197,6 +235,47 @@
           "path": "/agents/api/projects/{project}/agents/{name}/turns/{turnId}/delivered",
           "headers": {
             "Authorization": "{authorization}"
+          },
+          "status": 204,
+          "file": null,
+          "frozen": {
+            "ids": [],
+            "instants": [],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        },
+        {
+          "operationId": "recordAgentUsage",
+          "method": "POST",
+          "path": "/agents/api/projects/{project}/agents/{name}/usage",
+          "headers": {
+            "Authorization": "{authorization}"
+          },
+          "body": {
+            "sessionId": "session-contract",
+            "messages": [
+              {
+                "messageId": "msg_contract_1",
+                "workQualifiedId": "qits-101",
+                "model": "claude-opus-5-5",
+                "inputTokens": 12,
+                "outputTokens": 340,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 51234,
+                "at": "2026-11-26T10:00:00Z"
+              },
+              {
+                "messageId": "msg_contract_2",
+                "workQualifiedId": null,
+                "model": "claude-opus-5-5",
+                "inputTokens": 3,
+                "outputTokens": 20,
+                "cacheCreationTokens": 100,
+                "cacheReadTokens": 0,
+                "at": "2026-11-26T10:01:00Z"
+              }
+            ]
           },
           "status": 204,
           "file": null,

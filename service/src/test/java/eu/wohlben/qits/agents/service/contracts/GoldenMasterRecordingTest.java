@@ -96,6 +96,18 @@ class GoldenMasterRecordingTest {
 
   static final String REPORT = "{\"generation\":2,\"state\":\"BUSY\",\"sessionId\":\"session-contract\"}";
 
+  /** qits-2521: one task message and one of the overseer's own, as the daemon's scanner sends. */
+  static final String USAGE =
+      "{\"sessionId\":\"session-contract\",\"messages\":["
+          + "{\"messageId\":\"msg_contract_1\",\"workQualifiedId\":\"qits-101\","
+          + "\"model\":\"claude-opus-5-5\",\"inputTokens\":12,\"outputTokens\":340,"
+          + "\"cacheCreationTokens\":0,\"cacheReadTokens\":51234,"
+          + "\"at\":\"2026-11-26T10:00:00Z\"},"
+          + "{\"messageId\":\"msg_contract_2\",\"workQualifiedId\":null,"
+          + "\"model\":\"claude-opus-5-5\",\"inputTokens\":3,\"outputTokens\":20,"
+          + "\"cacheCreationTokens\":100,\"cacheReadTokens\":0,"
+          + "\"at\":\"2026-11-26T10:01:00Z\"}]}";
+
   static final List<Interaction> INTERACTIONS =
       List.of(
           operator("listAgents", "GET", API + "/projects/{project}/agents", null, 200),
@@ -106,10 +118,12 @@ class GoldenMasterRecordingTest {
               "markAgentTurnDelivered", "POST", AGENT + "/turns/{turnId}/delivered", null, 204),
           operator("getAgentLaunch", "GET", AGENT + "/launch", null, 200),
           operator("reportAgent", "PUT", AGENT + "/report", REPORT, 204),
+          operator("recordAgentUsage", "POST", AGENT + "/usage", USAGE, 204),
           self("listAgentTurns", "GET", AGENT + "/turns", null, 200),
           self("markAgentTurnDelivered", "POST", AGENT + "/turns/{turnId}/delivered", null, 204),
           self("getAgentLaunch", "GET", AGENT + "/launch", null, 200),
           self("reportAgent", "PUT", AGENT + "/report", REPORT, 204),
+          self("recordAgentUsage", "POST", AGENT + "/usage", USAGE, 204),
           self("getMe", "GET", API + "/me", null, 200),
           // qits-2597: the daemon's pact matches `kind` by type, so a WAIT turn's shape stays
           // green; this is what lets it see one.
