@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import eu.wohlben.qits.agents.service.entity.ProjectAgent;
 import eu.wohlben.qits.agents.service.support.FakeSystem;
+import eu.wohlben.qits.agents.service.support.FakeTrustAnchors;
 import eu.wohlben.qits.agents.service.support.Fixtures;
 import eu.wohlben.qits.eventstream.QitsEvent;
 import io.quarkus.test.junit.QuarkusTest;
@@ -32,6 +33,8 @@ class AgentLeasesTest {
 
   FakeSystem system;
 
+  FakeTrustAnchors anchors;
+
   List<QitsEvent> events;
 
   @BeforeEach
@@ -39,6 +42,7 @@ class AgentLeasesTest {
     fixtures.clear();
     events = Fixtures.recordEvents();
     system = Fixtures.system(new FakeSystem());
+    anchors = Fixtures.trustAnchors(new FakeTrustAnchors());
     fixtures.agent(DEVELOPER, "developer", 3);
   }
 
@@ -60,6 +64,27 @@ class AgentLeasesTest {
     assertEquals(3, row.generation, "the runtime never moves a generation");
     assertEquals(List.of(), fixtures.turns(DEVELOPER), "nor queues a turn");
     assertEquals(List.of(), events, "nor publishes");
+  }
+
+  @Test
+  void applyFreezesTodaysTrustAnchorBundleOntoTheRowAndTheSpec() {
+    String pem = "-----BEGIN CERTIFICATE-----\npem\n-----END CERTIFICATE-----";
+    anchors.set(pem);
+
+    leases.apply(fixtures.read(DEVELOPER)).orElseThrow();
+
+    assertEquals(pem, fixtures.read(DEVELOPER).trustAnchors);
+    FakeSystem.Call create = system.writes("create").getFirst();
+    assertEquals(pem, create.spec().env().get(AgentSpecs.TRUST_ANCHORS_ENV));
+  }
+
+  @Test
+  void applyLeavesTheBundleOutWhenNoneIsHeldYet() {
+    leases.apply(fixtures.read(DEVELOPER)).orElseThrow();
+
+    assertNull(fixtures.read(DEVELOPER).trustAnchors);
+    FakeSystem.Call create = system.writes("create").getFirst();
+    assertTrue(!create.spec().env().containsKey(AgentSpecs.TRUST_ANCHORS_ENV));
   }
 
   @Test

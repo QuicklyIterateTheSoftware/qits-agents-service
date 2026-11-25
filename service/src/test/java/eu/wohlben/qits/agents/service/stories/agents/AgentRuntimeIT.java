@@ -103,6 +103,8 @@ public class AgentRuntimeIT {
       overrides.put("quarkus.otel.sdk.disabled", "true");
       overrides.put("qits.eventstream.enabled", "false");
       overrides.put("qits.agents.roster-reconcile-at-boot", "false");
+      // No outbound call to qits-certificates from this IT (qits-2636): NORMAL mode, not %test.
+      overrides.put("qits.trust.enabled", "false");
       return overrides;
     }
 

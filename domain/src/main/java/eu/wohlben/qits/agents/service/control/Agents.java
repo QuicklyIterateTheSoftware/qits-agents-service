@@ -185,16 +185,20 @@ public class Agents {
 
   /**
    * Records the lease the runtime was granted for the agent — only on a row that names none, so a
-   * lease recorded meanwhile is never overwritten. Answers whether it was stored. Publishes nothing:
-   * a lease moves no generation, desired state or reported state.
+   * lease recorded meanwhile is never overwritten. {@code trustAnchors} is the platform CA's bundle
+   * (qits-2636) the runtime read when it asked for this lease, frozen onto the row at the same
+   * moment, blank or null meaning none; a later roll never calls this and never moves it. Answers
+   * whether it was stored. Publishes nothing: a lease moves no generation, desired state or reported
+   * state.
    */
   @Transactional
-  public boolean storeLease(UUID agentId, UUID leaseId) {
+  public boolean storeLease(UUID agentId, UUID leaseId, String trustAnchors) {
     ProjectAgent agent = ProjectAgent.findById(agentId);
     if (agent == null || agent.leaseId != null) {
       return false;
     }
     agent.leaseId = leaseId;
+    agent.trustAnchors = trustAnchors == null || trustAnchors.isBlank() ? null : trustAnchors;
     agent.updatedAt = now();
     return true;
   }

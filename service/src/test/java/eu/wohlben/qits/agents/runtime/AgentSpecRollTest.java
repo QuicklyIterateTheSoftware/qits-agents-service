@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import eu.wohlben.qits.agents.runtime.SystemLeasesApi.Lease;
 import eu.wohlben.qits.agents.runtime.SystemLeasesApi.LeaseSpec;
 import eu.wohlben.qits.agents.service.support.FakeSystem;
+import eu.wohlben.qits.agents.service.support.FakeTrustAnchors;
 import eu.wohlben.qits.agents.service.support.Fixtures;
 import eu.wohlben.qits.agentsdaemon.protocol.AgentImage;
 import io.quarkus.test.junit.QuarkusTest;
@@ -29,15 +30,20 @@ class AgentSpecRollTest {
 
   @Inject AgentSpecs specs;
 
+  @Inject AgentLeases leases;
+
   @Inject Fixtures fixtures;
 
   FakeSystem system;
+
+  FakeTrustAnchors anchors;
 
   @BeforeEach
   void arrange() {
     fixtures.clear();
     Fixtures.recordEvents();
     system = Fixtures.system(new FakeSystem());
+    anchors = Fixtures.trustAnchors(new FakeTrustAnchors());
     fixtures.agent(DEVELOPER, "developer", 1);
   }
 
@@ -95,5 +101,52 @@ class AgentSpecRollTest {
 
     assertFalse(roll.roll(fixtures.read(DEVELOPER), system.leases.get(other)));
     assertEquals(List.of(), system.writes());
+  }
+
+  // --- the platform CA's anchors (qits-2636) --------------------------------------------------
+
+  @Test
+  void aBundleFrozenOnTheRowSendsNothingWhileItStaysThere() {
+    fixtures.trustAnchors(DEVELOPER, "pem-v1");
+    Lease lease = running(specs.compose(fixtures.read(DEVELOPER)));
+
+    assertFalse(roll.roll(fixtures.read(DEVELOPER), lease));
+    assertEquals(List.of(), system.writes());
+  }
+
+  @Test
+  void aRollForAnotherReasonCarriesTheFrozenBundleUnchanged() {
+    fixtures.trustAnchors(DEVELOPER, "pem-v1");
+    Lease lease = running(specs.compose(fixtures.read(DEVELOPER)));
+    fixtures.token(DEVELOPER, "qits_tok_rotated");
+
+    assertTrue(roll.roll(fixtures.read(DEVELOPER), lease));
+
+    assertEquals(
+        "pem-v1", system.writes("roll").getFirst().spec().env().get(AgentSpecs.TRUST_ANCHORS_ENV));
+  }
+
+  /**
+   * The rule the ticket is about: a CA rotation ALONE, between an agent's lease being created and
+   * this reconcile pass, must never roll it. The lease is created while the bundle reads
+   * {@code pem-v1} (frozen on the row); the live bundle then rotates to {@code pem-v2}, and nothing
+   * else about the agent changes.
+   */
+  @Test
+  void aLiveBundleChangeAfterTheLeaseWasCreatedNeverRolls() {
+    anchors.set("pem-v1");
+    UUID leaseId = leases.apply(fixtures.read(DEVELOPER)).orElseThrow();
+    assertEquals("pem-v1", fixtures.read(DEVELOPER).trustAnchors);
+    Lease lease = system.leases.get(leaseId);
+    system.calls.clear();
+
+    anchors.set("pem-v2"); // the CA rotated; nothing else about the agent changed
+
+    assertFalse(roll.roll(fixtures.read(DEVELOPER), lease));
+    assertEquals(List.of(), system.writes());
+    assertEquals(
+        "pem-v1",
+        fixtures.read(DEVELOPER).trustAnchors,
+        "the row still holds the bundle the lease was created with");
   }
 }

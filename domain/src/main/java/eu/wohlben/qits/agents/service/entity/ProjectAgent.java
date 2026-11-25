@@ -99,6 +99,17 @@ public class ProjectAgent extends PanacheEntityBase {
   @Column(name = "lease_id")
   public UUID leaseId;
 
+  /**
+   * The platform CA's anchor bundle (PEM) held when {@link #leaseId}'s lease was asked for
+   * (qits-2636), or null when none was held then. Written only by {@code Agents.storeLease}, at
+   * the same moment as {@link #leaseId} — never touched by a roll ({@code AgentSpecRoll}), which
+   * reads it back unchanged. That is what keeps a CA rotation alone from moving the composed spec's
+   * hash and rolling a running container: the live bundle is read only when a new lease is asked
+   * for, and reaches this agent at its next one.
+   */
+  @Column(name = "trust_anchors", columnDefinition = "text")
+  public String trustAnchors;
+
   @Column(name = "created_at", nullable = false)
   public Instant createdAt;
 

@@ -19,6 +19,13 @@ import org.jboss.logging.Logger;
  * <p>The comparison needs no stored copy of the spec: qits-system hashes the spec it was sent
  * exactly as {@link AgentSpecs#hash} does (its {@code LeaseSpecs.hash}), and its answers redact
  * every env value, so the hash is the one thing a reader can compare a token by.
+ *
+ * <p><b>The platform CA's anchors never move this hash on their own</b> (qits-2636). {@link
+ * AgentSpecs#compose} reads {@code agent.trustAnchors} — the bundle {@link AgentLeases#apply} froze
+ * on the row when this lease was asked for — never qits-trust-core's live bundle, which this class
+ * does not inject at all. So a CA rotation changes nothing this method composes, and {@link #roll}
+ * answers {@code false} for it exactly as it does for an unchanged image or token; the new bundle
+ * reaches the agent only at its next lease.
  */
 @ApplicationScoped
 public class AgentSpecRoll {

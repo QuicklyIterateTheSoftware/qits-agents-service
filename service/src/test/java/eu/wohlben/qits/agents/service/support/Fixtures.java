@@ -137,6 +137,16 @@ public class Fixtures {
     agent.tokenValue = value;
   }
 
+  /**
+   * Freezes a trust-anchor bundle on the agent's row, as {@code Agents.storeLease} does when a
+   * lease is asked for (qits-2636). Null clears it.
+   */
+  @Transactional
+  public void trustAnchors(UUID agentId, String pem) {
+    ProjectAgent agent = ProjectAgent.findById(agentId);
+    agent.trustAnchors = pem;
+  }
+
   @Transactional
   public ProjectAgent read(UUID agentId) {
     return ProjectAgent.findById(agentId);
@@ -189,6 +199,12 @@ public class Fixtures {
   public static FakeSystem system(FakeSystem system) {
     QuarkusMock.installMockForType(system, eu.wohlben.qits.agents.runtime.SystemLeasesClient.class);
     return system;
+  }
+
+  /** Installs {@code trustAnchors} as the platform CA's bundle (qits-2636), for the current test. */
+  public static FakeTrustAnchors trustAnchors(FakeTrustAnchors trustAnchors) {
+    QuarkusMock.installMockForType(trustAnchors, eu.wohlben.qits.agents.runtime.TrustAnchorSource.class);
+    return trustAnchors;
   }
 
   /** The recorded events of one type. */

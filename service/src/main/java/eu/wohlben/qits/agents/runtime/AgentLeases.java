@@ -33,6 +33,12 @@ import org.jboss.logging.Logger;
  * a turn or publishes {@code ProjectAgentChanged}. The in-container daemon restarts the harness
  * from {@code launch}. Every HTTP call is made outside any transaction, and a refusal never throws:
  * the next sweep asks again. The spec carries the agent's token and is never logged.
+ *
+ * <p><b>The platform CA's anchors</b> ({@link TrustAnchorSource}, qits-2636) are read HERE, in
+ * {@link #apply}, and only when a brand new lease is asked for — never in {@link AgentSpecRoll},
+ * which composes from whatever the row already holds. The bundle is frozen onto the row at the same
+ * moment the lease id is ({@code Agents#storeLease}), so a CA rotation alone never changes the spec
+ * of a lease that already exists; the new bundle reaches the agent at its next lease.
  */
 @ApplicationScoped
 public class AgentLeases {
@@ -45,6 +51,8 @@ public class AgentLeases {
 
   @Inject SystemLeasesClient system;
 
+  @Inject TrustAnchorSource trustAnchorSource;
+
   /** Asks for the agent's lease when it is RUNNING with none; answers the lease id it recorded. */
   public Optional<UUID> apply(ProjectAgent agent) {
     if (agent == null || agent.desiredState != DesiredState.RUNNING || agent.leaseId != null) {
@@ -56,6 +64,9 @@ public class AgentLeases {
           agent.projectSlug, agent.name);
       return Optional.empty();
     }
+    // Read only here, for a brand new lease: frozen onto the row below, never re-read for a roll.
+    String pem = currentTrustAnchors();
+    agent.trustAnchors = pem;
     LeaseSpec spec;
     try {
       spec = specs.compose(agent);
@@ -68,7 +79,7 @@ public class AgentLeases {
       lease = system.create(agent.id, spec);
     } catch (LeaseRefused refused) {
       if (SystemLeasesClient.LEASE_EXISTS.equals(refused.code())) {
-        return adopt(agent);
+        return adopt(agent, pem);
       }
       LOG.warnf(
           "qits-system has not leased agent %s/%s a slot; the next sweep asks again: %s",
@@ -79,7 +90,7 @@ public class AgentLeases {
       LOG.warnf("qits-system answered the lease request of agent %s/%s with no lease", agent.projectSlug, agent.name);
       return Optional.empty();
     }
-    if (!agents.storeLease(agent.id, lease.id())) {
+    if (!agents.storeLease(agent.id, lease.id(), pem)) {
       LOG.infof(
           "agent %s/%s changed while its lease %s was asked for; ending that lease",
           agent.projectSlug, agent.name, lease.id());
@@ -180,9 +191,11 @@ public class AgentLeases {
   /**
    * qits-system already holds a live lease for the agent's work key that its row does not name — a
    * crash between the ask and the store. This tenant's live lease whose owner ref is the agent is
-   * recorded; any other holder is left to a person, named in the WARN.
+   * recorded, with {@code trustAnchors} — the bundle the ask that got refused just composed with —
+   * frozen onto the row the same way a successful create's is; any other holder is left to a
+   * person, named in the WARN.
    */
-  private Optional<UUID> adopt(ProjectAgent agent) {
+  private Optional<UUID> adopt(ProjectAgent agent, String trustAnchors) {
     Optional<Lease> held;
     try {
       held =
@@ -205,7 +218,7 @@ public class AgentLeases {
       return Optional.empty();
     }
     UUID leaseId = held.get().id();
-    if (!agents.storeLease(agent.id, leaseId)) {
+    if (!agents.storeLease(agent.id, leaseId, trustAnchors)) {
       return Optional.empty();
     }
     LOG.infof("Adopted AGENT lease %s of agent %s/%s, which no row named", leaseId, agent.projectSlug, agent.name);
@@ -217,6 +230,16 @@ public class AgentLeases {
       system.end(leaseId);
     } catch (LeaseRefused refused) {
       LOG.warnf("Could not end lease %s: %s", leaseId, refused.getMessage());
+    }
+  }
+
+  /** Today's bundle, or none. A failed read costs the variable, never the lease. */
+  private String currentTrustAnchors() {
+    try {
+      return trustAnchorSource.pem().filter(pem -> !pem.isBlank()).orElse(null);
+    } catch (RuntimeException e) {
+      LOG.warnf(e, "could not read the trust anchor bundle; the lease is asked for without it");
+      return null;
     }
   }
 }

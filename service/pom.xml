@@ -96,6 +96,12 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>qits-telemetry-core</artifactId>
         </dependency>
+        <dependency>
+            <!-- TrustAnchors.envEntry()/pem(): QITS_TRUST_ANCHORS on an agent's container, when a
+                 bundle is held (qits-2636, runtime/PlatformTrustAnchors). -->
+            <groupId>${project.groupId}</groupId>
+            <artifactId>qits-trust-core</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>io.quarkus</groupId>

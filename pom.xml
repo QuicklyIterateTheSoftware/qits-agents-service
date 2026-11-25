@@ -61,6 +61,10 @@
         <qits.http-core.version>2026.1106.507</qits.http-core.version>
         <!-- OTLP export to qits-observability through the edge, with the `qits` client's bearer. -->
         <qits.telemetry-core.version>2026.1106.507</qits.telemetry-core.version>
+        <!-- The platform CA's anchor bundle (qits-2636): TrustAnchors.envEntry() gives the PEM for
+             QITS_TRUST_ANCHORS on an agent's container, polled with the `qits` client's bearer like
+             qits-telemetry-core. First adoption (qits-2632): no maintenance bump adds it. -->
+        <qits.trust-core.version>2026.1125.110206</qits.trust-core.version>
         <!-- The event bus client: ProjectAgentChanged is published through it. qits-eventstream-
              contracts, its pact kit, always rides the same version. -->
         <qits.eventstream.version>2026.1120.94334</qits.eventstream.version>
@@ -194,6 +198,11 @@
                 <groupId>${project.groupId}</groupId>
                 <artifactId>qits-telemetry-core</artifactId>
                 <version>${qits.telemetry-core.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>qits-trust-core</artifactId>
+                <version>${qits.trust-core.version}</version>
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>

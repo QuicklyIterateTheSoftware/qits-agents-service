@@ -101,6 +101,35 @@ class AgentSpecsTest {
   }
 
   @Test
+  void theTrustAnchorsEnvHoldsTheRowsFrozenBundle() {
+    ProjectAgent agent = developer();
+    agent.trustAnchors = "-----BEGIN CERTIFICATE-----\nabc\n-----END CERTIFICATE-----";
+
+    LeaseSpec spec = specs.compose(agent);
+
+    assertEquals(agent.trustAnchors, spec.env().get(AgentSpecs.TRUST_ANCHORS_ENV));
+  }
+
+  @Test
+  void theTrustAnchorsEnvIsLeftOutWhenTheRowHoldsNone() {
+    ProjectAgent agent = developer();
+    agent.trustAnchors = null;
+
+    LeaseSpec spec = specs.compose(agent);
+
+    assertFalse(spec.env().containsKey(AgentSpecs.TRUST_ANCHORS_ENV));
+    assertEquals(AgentSpecs.ENV, spec.env().keySet());
+  }
+
+  @Test
+  void aBlankTrustAnchorsRowIsAlsoLeftOut() {
+    ProjectAgent agent = developer();
+    agent.trustAnchors = "   ";
+
+    assertFalse(specs.compose(agent).env().containsKey(AgentSpecs.TRUST_ANCHORS_ENV));
+  }
+
+  @Test
   void aDomainAnEdgeCannotServeRefusesToCompose() {
     for (String domain : new String[] {null, "", "localhost", "qits.localhost", "nodot"}) {
       AgentSpecs.Settings settings = new AgentSpecs.Settings(domain, "1000", "4g", null, null, 800);

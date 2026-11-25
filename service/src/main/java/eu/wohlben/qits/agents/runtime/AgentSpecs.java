@@ -31,13 +31,22 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
  * <ul>
  *   <li><b>The image</b> is {@code registry.qits.<domain>/qits/agent:<AgentImage.VERSION>}: the pinned
  *       {@code qits-agents-daemon-protocol} jar decides the tag, so a pin bump is a roll.
- *   <li><b>The environment</b> is exactly {@link #ENV}, the table of qits-agents-daemon's README.
+ *   <li><b>The environment</b> is exactly {@link #ENV}, the table of qits-agents-daemon's README,
+ *       plus {@link #TRUST_ANCHORS_ENV} when the row carries one.
  *       {@code QITS_TOKEN} is the row's own commissioned token, so a rotated token is a roll too.
  *       Never {@link #POLICY_OWNED_ENV}: the AGENT slot policy owns those and qits-system refuses a
  *       spec naming one. Mounts, network and init are the policy's as well.
  *   <li><b>The user and the limits</b> are the front desk's: uid {@code 1000}, a hard {@code 4g}
  *       memory cap (swap the same), {@code oomScoreAdj 800}, no pids or cpu cap unless configured.
  * </ul>
+ *
+ * <p><b>The platform CA's anchors</b> ({@link #TRUST_ANCHORS_ENV}, qits-2636) ride as
+ * {@code agent.trustAnchors} — the bundle {@code AgentLeases} read when this agent's current lease
+ * was asked for, frozen there and left out when none was held. {@link #compose} only ever reads
+ * that row field, never qits-trust-core's live {@code TrustAnchors} bean directly, which is what
+ * keeps a CA rotation alone from moving the composed spec's hash: {@code AgentSpecRoll}'s
+ * comparison composes from the same frozen value every time, so it answers unchanged until a new
+ * lease freezes a new one. See {@code AgentLeases#apply} for where the live bundle is actually read.
  *
  * <p><b>Edge-only.</b> The container runs on a target's node and reaches the platform only at
  * {@code <app>.qits.<domain>}; a domain that is blank, has no dot, or is {@code localhost} refuses
@@ -65,6 +74,12 @@ public class AgentSpecs {
 
   /** The environment names the AGENT slot policy owns; qits-system refuses a spec naming one. */
   public static final Set<String> POLICY_OWNED_ENV = Set.of("HOME", "CLAUDE_CONFIG_DIR", "BUILDKIT_HOST");
+
+  /**
+   * The env name the platform CA's anchor bundle rides as (qits-2636): additive, never part of
+   * {@link #ENV}, and present only while {@code agent.trustAnchors} holds one.
+   */
+  public static final String TRUST_ANCHORS_ENV = "QITS_TRUST_ANCHORS";
 
   private static final String PLATFORM_PROJECT = "qits";
 
@@ -132,6 +147,12 @@ public class AgentSpecs {
     env.put("QITS_DOMAIN", d);
     env.put("GIT_CONFIG_GLOBAL", "/etc/qits-gitconfig");
     env.put("QITS_GIT_AUTH_HOST", host("githost", d));
+    // The platform CA's anchors (qits-2636): the bundle this agent's current lease was asked for
+    // with, frozen on the row by AgentLeases at creation — never today's live bundle, which is
+    // what keeps a CA rotation alone from moving this hash. Left out while none was held then.
+    if (agent.trustAnchors != null && !agent.trustAnchors.isBlank()) {
+      env.put(TRUST_ANCHORS_ENV, agent.trustAnchors);
+    }
     Limits limits =
         new Limits(
             settings.memory(),
