@@ -51,7 +51,8 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
       SystemLeasesApi.SpecRequest.class,
       SystemLeasesApi.LeaseSpec.class,
       SystemLeasesApi.Limits.class,
-      SystemLeasesApi.Lease.class
+      SystemLeasesApi.Lease.class,
+      SystemLeasesApi.LeaseSpecView.class
     },
     classNames = {
       "eu.wohlben.qits.eventstream.control.EventPage",
