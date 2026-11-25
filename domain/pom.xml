@@ -6,7 +6,7 @@
     <parent>
         <groupId>eu.wohlben.qits</groupId>
         <artifactId>qits-agents</artifactId>
-        <version>2026.1125.202531</version>
+        <version>2026.1125.234246</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <!-- The domain: agent, agent_claim and agent_turn, their Flyway lineage, the roster reconcile,
