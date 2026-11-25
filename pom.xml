@@ -50,15 +50,15 @@
              which the reconcile loads by ServiceLoader. The roster is a compile-scope dependency: a
              roster release is a release of this service (the restart of an agent rides it). -->
         <qits.agents-contract.version>2026.1122.201825</qits.agents-contract.version>
-        <qits.agents-roster.version>2026.1124.85019</qits.agents-roster.version>
+        <qits.agents-roster.version>2026.1125.33811</qits.agents-roster.version>
         <!-- The datasource resilience pair (PatientPgDriver/DbRetry, and the rule that checks the
              block). They move together: the rule names the driver as a string. -->
         <qits.db-core.version>2026.1107.191249</qits.db-core.version>
         <qits.arch-rules.version>2026.1113.14706</qits.arch-rules.version>
         <!-- Machine identity: the rollout gate every sibling shares. -->
-        <qits.auth-core.version>2026.1106.507</qits.auth-core.version>
+        <qits.auth-core.version>2026.1125.60148</qits.auth-core.version>
         <!-- Caller stamping on inbound and outbound HTTP. -->
-        <qits.http-core.version>2026.1106.507</qits.http-core.version>
+        <qits.http-core.version>2026.1125.110206</qits.http-core.version>
         <!-- OTLP export to qits-observability through the edge, with the `qits` client's bearer. -->
         <qits.telemetry-core.version>2026.1106.507</qits.telemetry-core.version>
         <!-- The platform CA's anchor bundle (qits-2636): TrustAnchors.envEntry() gives the PEM for
@@ -77,8 +77,8 @@
         <!-- The consumer pacts against qits-idp-service and qits-projects-service (test scope): the
              shared golden-master reader and what each provider answers in each provider state. -->
         <qits.pact-consumer.version>2026.1106.507</qits.pact-consumer.version>
-        <qits.idp-golden-masters.version>2026.1123.194348</qits.idp-golden-masters.version>
-        <qits.projects-golden-masters.version>2026.1124.202345</qits.projects-golden-masters.version>
+        <qits.idp-golden-masters.version>2026.1125.71255</qits.idp-golden-masters.version>
+        <qits.projects-golden-masters.version>2026.1125.32444</qits.projects-golden-masters.version>
         <!-- qits-system's lease doors, as the AGENT tenant asks them (runtime/SystemLeasesClient,
              qits-2519): the states `a queued agent lease` and `a running agent lease`. -->
         <qits.system-golden-masters.version>2026.1123.194748</qits.system-golden-masters.version>
@@ -86,7 +86,7 @@
              runtime/AgentSpecs puts in every AGENT lease. ONE PROPERTY REFERENCE, so qits-
              maintenance's bump train can move it; pinned here by hand once (a first adoption gets no
              bump), the train's afterwards. -->
-        <qits.agents-daemon-protocol.version>2026.1124.114205</qits.agents-daemon-protocol.version>
+        <qits.agents-daemon-protocol.version>2026.1125.93924</qits.agents-daemon-protocol.version>
         <qits.maven.repository.url>https://registry.qits.wohlben.eu/artifacts/maven/maven</qits.maven.repository.url>
         <!-- Real PostgreSQL binaries as a maven dependency, spawned by the suite: a clone tests
              green with NO DOCKER, so no Testcontainers and no dev services. -->
