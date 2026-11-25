@@ -29,6 +29,7 @@ erDiagram
     uuid token_id
     string token_subject "length 128"
     text token_value
+    text trust_anchors
     instant updated_at "not null"
   }
   %% agent_claim: eu.wohlben.qits.agents.service.entity.AgentClaim (domain)
