@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The design page's role matrix, door by door: no door answers an anonymous caller (401); the
- * three reads admit the whole READ set; the five runner doors (usage included, qits-2521) admit the operators (admin,
+ * four reads (the evaluation included) admit the whole READ set; the five runner doors (usage included, qits-2521) admit the operators (admin,
  * desk-admin, system) and the agent itself, and refuse any other {@code qits:agent} — another
  * agent's own credential included — and the rest of the READ set 403; {@code GET /me} answers only
  * an agent's credential.
@@ -36,12 +36,13 @@ class RoleMatrixTest {
 
   static final UUID TURN = UUID.fromString("2d8b9c3a-4e5f-4071-8c1d-2e3f4a5b6c7d");
 
-  /** The three reads. */
+  /** The four reads: the three of the agents, and the evaluation (qits-2521). */
   static final List<String[]> READS =
       List.of(
           new String[] {"GET", API + "/projects/qits/agents"},
           new String[] {"GET", AGENT},
-          new String[] {"GET", AGENT + "/claims"});
+          new String[] {"GET", AGENT + "/claims"},
+          new String[] {"GET", API + "/projects/qits/evaluation"});
 
   @Inject Fixtures fixtures;
 

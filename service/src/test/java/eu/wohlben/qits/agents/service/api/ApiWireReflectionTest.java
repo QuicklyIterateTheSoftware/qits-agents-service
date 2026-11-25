@@ -4,7 +4,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import eu.wohlben.qits.agents.runtime.SystemLeasesApi;
+import eu.wohlben.qits.agents.service.events.AgentActivityChanged;
+import eu.wohlben.qits.agents.service.events.AgentHarnessExited;
+import eu.wohlben.qits.agents.service.events.AgentPlaced;
+import eu.wohlben.qits.agents.service.events.AgentUsageRecorded;
+import eu.wohlben.qits.agents.service.events.AgentWaitClosed;
+import eu.wohlben.qits.agents.service.events.BuildStatusChanged;
 import eu.wohlben.qits.agents.service.events.EntityAssigned;
+import eu.wohlben.qits.agents.service.events.EntityBlockChanged;
+import eu.wohlben.qits.agents.service.events.EntityTransitioned;
+import eu.wohlben.qits.agents.service.events.ReleaseRequestStateChanged;
 import eu.wohlben.qits.agents.service.events.EntityCommented;
 import eu.wohlben.qits.agents.service.events.ProjectAgentChanged;
 import eu.wohlben.qits.agents.service.events.ProjectAgentWaitClosed;
@@ -34,6 +43,27 @@ class ApiWireReflectionTest {
       assertTrue(
           registered.contains(type),
           type.getSimpleName() + " is on the wire and not in ApiWireReflection");
+    }
+    for (Class<?> type : EvaluationWire.class.getDeclaredClasses()) {
+      assertTrue(
+          registered.contains(type),
+          type.getSimpleName() + " is on the wire and not in ApiWireReflection");
+    }
+    for (Class<?> consumed :
+        List.of(
+            EntityTransitioned.class,
+            EntityTransitioned.Entity.class,
+            EntityBlockChanged.class,
+            ReleaseRequestStateChanged.class,
+            BuildStatusChanged.class,
+            AgentPlaced.class,
+            AgentActivityChanged.class,
+            AgentHarnessExited.class,
+            AgentWaitClosed.class,
+            AgentUsageRecorded.class)) {
+      assertTrue(
+          registered.contains(consumed),
+          "the consumed " + consumed.getSimpleName() + " is registered");
     }
     assertTrue(registered.contains(ProjectAgentChanged.class), "the event is registered");
     assertTrue(registered.contains(EntityAssigned.class), "the consumed EntityAssigned is registered");

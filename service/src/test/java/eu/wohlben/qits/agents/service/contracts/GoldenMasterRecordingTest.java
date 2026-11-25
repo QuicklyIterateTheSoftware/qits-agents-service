@@ -74,7 +74,20 @@ class GoldenMasterRecordingTest {
       String path,
       String body,
       int status,
-      boolean self) {}
+      boolean self,
+      Map<String, String> query) {
+
+    Interaction(
+        String state,
+        String operationId,
+        String method,
+        String path,
+        String body,
+        int status,
+        boolean self) {
+      this(state, operationId, method, path, body, status, self, Map.of());
+    }
+  }
 
   private static Interaction operator(
       String operationId, String method, String path, String body, int status) {
@@ -142,7 +155,17 @@ class GoldenMasterRecordingTest {
               AGENT + "/turns",
               null,
               200,
-              true));
+              true),
+          // qits-2521: the evaluation, over a fixed window, so verifiedPerDay never moves.
+          new Interaction(
+              ProviderStates.AN_EVALUATION_LEDGER,
+              "getEvaluation",
+              "GET",
+              API + "/projects/{project}/evaluation",
+              null,
+              200,
+              false,
+              Map.of("since", "2026-11-25T00:00:00Z", "until", "2026-11-25T12:00:00Z")));
 
   private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -195,6 +218,10 @@ class GoldenMasterRecordingTest {
       operation.put("operationId", interaction.operationId());
       operation.put("method", interaction.method());
       operation.put("path", interaction.path());
+      if (!interaction.query().isEmpty()) {
+        ObjectNode query = operation.putObject("query");
+        new TreeMap<>(interaction.query()).forEach(query::put);
+      }
       if (interaction.self()) {
         operation.putObject("headers").put("Authorization", "{authorization}");
       }
@@ -266,7 +293,8 @@ class GoldenMasterRecordingTest {
     var request =
         given()
             .header("Accept", "application/json")
-            .header("Authorization", authorization(interaction, params));
+            .header("Authorization", authorization(interaction, params))
+            .queryParams(interaction.query());
     if (interaction.body() != null) {
       request = request.contentType("application/json").body(interaction.body());
     }

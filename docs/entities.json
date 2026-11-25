@@ -15,9 +15,53 @@
           "kind" : "factory",
           "via" : null,
           "site" : "ClaimDto.of(AgentClaim)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "site" : "EvaluationDto.of(Report)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ItemFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "site" : "Report.items()"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Ledger",
+          "kind" : "factory",
+          "via" : null,
+          "site" : "Ledger.<init>(List, List, List, List, List, List, List, List, List, List, List, List, Map)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ModelFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Ledger",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$PerVerified",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Ledger",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.report(Project, Instant, Instant)"
         }
       ],
       "operations" : [
+        {
+          "operationId" : "getEvaluation",
+          "method" : "GET",
+          "path" : "/projects/{project}/evaluation",
+          "dto" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "schema",
+          "cardinality" : "single"
+        },
         {
           "operationId" : "listAgentClaims",
           "method" : "GET",
@@ -61,8 +105,54 @@
       "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
       "projectionOf" : null,
       "knownGap" : null,
-      "dtos" : [ ],
-      "operations" : [ ]
+      "dtos" : [
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "site" : "EvaluationDto.of(Report)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ItemFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "site" : "Report.items()"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Ledger",
+          "kind" : "factory",
+          "via" : null,
+          "site" : "Ledger.<init>(List, List, List, List, List, List, List, List, List, List, List, List, Map)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ModelFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Ledger",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$PerVerified",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Ledger",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.report(Project, Instant, Instant)"
+        }
+      ],
+      "operations" : [
+        {
+          "operationId" : "getEvaluation",
+          "method" : "GET",
+          "path" : "/projects/{project}/evaluation",
+          "dto" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "schema",
+          "cardinality" : "single"
+        }
+      ]
     },
     {
       "entity" : "eu.wohlben.qits.agents.service.entity.EvalBlock",
@@ -71,8 +161,54 @@
       "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
       "projectionOf" : null,
       "knownGap" : null,
-      "dtos" : [ ],
-      "operations" : [ ]
+      "dtos" : [
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "site" : "EvaluationDto.of(Report)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ItemFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.itemFigures(Item)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ModelFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$PerVerified",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        }
+      ],
+      "operations" : [
+        {
+          "operationId" : "getEvaluation",
+          "method" : "GET",
+          "path" : "/projects/{project}/evaluation",
+          "dto" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "schema",
+          "cardinality" : "single"
+        }
+      ]
     },
     {
       "entity" : "eu.wohlben.qits.agents.service.entity.EvalExit",
@@ -81,8 +217,54 @@
       "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
       "projectionOf" : null,
       "knownGap" : null,
-      "dtos" : [ ],
-      "operations" : [ ]
+      "dtos" : [
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "site" : "EvaluationDto.of(Report)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ItemFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.itemFigures(Item)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ModelFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$PerVerified",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        }
+      ],
+      "operations" : [
+        {
+          "operationId" : "getEvaluation",
+          "method" : "GET",
+          "path" : "/projects/{project}/evaluation",
+          "dto" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "schema",
+          "cardinality" : "single"
+        }
+      ]
     },
     {
       "entity" : "eu.wohlben.qits.agents.service.entity.EvalItem",
@@ -91,8 +273,60 @@
       "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
       "projectionOf" : null,
       "knownGap" : null,
-      "dtos" : [ ],
-      "operations" : [ ]
+      "dtos" : [
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "site" : "EvaluationDto.of(Report)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.EvaluationWire$ItemDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$ItemFigures",
+          "site" : "ItemDto.of(ItemFigures)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "kind" : "factory",
+          "via" : null,
+          "site" : "Item.<init>(EvalItem, String, Instant, Instant, Instant, Instant, Instant, long, Map, double, double, double, Map, Map, long)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ItemFigures",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.itemFigures(Item)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ModelFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$PerVerified",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        }
+      ],
+      "operations" : [
+        {
+          "operationId" : "getEvaluation",
+          "method" : "GET",
+          "path" : "/projects/{project}/evaluation",
+          "dto" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "schema",
+          "cardinality" : "single"
+        }
+      ]
     },
     {
       "entity" : "eu.wohlben.qits.agents.service.entity.EvalRequest",
@@ -101,8 +335,54 @@
       "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
       "projectionOf" : null,
       "knownGap" : null,
-      "dtos" : [ ],
-      "operations" : [ ]
+      "dtos" : [
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "site" : "EvaluationDto.of(Report)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ItemFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.itemFigures(Item)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ModelFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$PerVerified",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        }
+      ],
+      "operations" : [
+        {
+          "operationId" : "getEvaluation",
+          "method" : "GET",
+          "path" : "/projects/{project}/evaluation",
+          "dto" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "schema",
+          "cardinality" : "single"
+        }
+      ]
     },
     {
       "entity" : "eu.wohlben.qits.agents.service.entity.EvalRequestState",
@@ -111,8 +391,54 @@
       "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
       "projectionOf" : null,
       "knownGap" : null,
-      "dtos" : [ ],
-      "operations" : [ ]
+      "dtos" : [
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "site" : "EvaluationDto.of(Report)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ItemFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.itemFigures(Item)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ModelFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$PerVerified",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        }
+      ],
+      "operations" : [
+        {
+          "operationId" : "getEvaluation",
+          "method" : "GET",
+          "path" : "/projects/{project}/evaluation",
+          "dto" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "schema",
+          "cardinality" : "single"
+        }
+      ]
     },
     {
       "entity" : "eu.wohlben.qits.agents.service.entity.EvalRun",
@@ -121,8 +447,54 @@
       "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
       "projectionOf" : null,
       "knownGap" : null,
-      "dtos" : [ ],
-      "operations" : [ ]
+      "dtos" : [
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "site" : "EvaluationDto.of(Report)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ItemFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.itemFigures(Item)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ModelFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$PerVerified",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        }
+      ],
+      "operations" : [
+        {
+          "operationId" : "getEvaluation",
+          "method" : "GET",
+          "path" : "/projects/{project}/evaluation",
+          "dto" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "schema",
+          "cardinality" : "single"
+        }
+      ]
     },
     {
       "entity" : "eu.wohlben.qits.agents.service.entity.EvalTransition",
@@ -131,8 +503,54 @@
       "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
       "projectionOf" : null,
       "knownGap" : null,
-      "dtos" : [ ],
-      "operations" : [ ]
+      "dtos" : [
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "site" : "EvaluationDto.of(Report)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ItemFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.itemFigures(Item)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ModelFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$PerVerified",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        }
+      ],
+      "operations" : [
+        {
+          "operationId" : "getEvaluation",
+          "method" : "GET",
+          "path" : "/projects/{project}/evaluation",
+          "dto" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "schema",
+          "cardinality" : "single"
+        }
+      ]
     },
     {
       "entity" : "eu.wohlben.qits.agents.service.entity.EvalUsage",
@@ -141,8 +559,54 @@
       "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
       "projectionOf" : null,
       "knownGap" : null,
-      "dtos" : [ ],
-      "operations" : [ ]
+      "dtos" : [
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "site" : "EvaluationDto.of(Report)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ItemFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.itemFigures(Item)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ModelFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$PerVerified",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        }
+      ],
+      "operations" : [
+        {
+          "operationId" : "getEvaluation",
+          "method" : "GET",
+          "path" : "/projects/{project}/evaluation",
+          "dto" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "schema",
+          "cardinality" : "single"
+        }
+      ]
     },
     {
       "entity" : "eu.wohlben.qits.agents.service.entity.EvalUsageMessage",
@@ -151,8 +615,78 @@
       "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
       "projectionOf" : null,
       "knownGap" : null,
-      "dtos" : [ ],
-      "operations" : [ ]
+      "dtos" : [
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "site" : "EvaluationDto.of(Report)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.EvaluationWire$ModelDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$ModelFigures",
+          "site" : "ModelDto.of(ModelFigures)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.EvaluationWire$PerVerifiedDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$PerVerified",
+          "site" : "PerVerifiedDto.of(PerVerified)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ItemFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.itemFigures(Item)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ModelFigures",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$PerVerified",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Percentiles",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$ModelFigures",
+          "site" : "ModelFigures.implementSeconds()"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Tokens",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$ModelFigures",
+          "site" : "ModelFigures.overheadTokens()"
+        }
+      ],
+      "operations" : [
+        {
+          "operationId" : "getEvaluation",
+          "method" : "GET",
+          "path" : "/projects/{project}/evaluation",
+          "dto" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "schema",
+          "cardinality" : "single"
+        }
+      ]
     },
     {
       "entity" : "eu.wohlben.qits.agents.service.entity.EvalWait",
@@ -161,8 +695,54 @@
       "reason" : "Evaluation ledger (qits-2521): a raw fact the evaluation door derives its figures from; never served as a row.",
       "projectionOf" : null,
       "knownGap" : null,
-      "dtos" : [ ],
-      "operations" : [ ]
+      "dtos" : [
+        {
+          "type" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "site" : "EvaluationDto.of(Report)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ItemFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.itemFigures(Item)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ModelFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$PerVerified",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Item",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.compute(String, Ledger, Instant, Instant, Instant)"
+        }
+      ],
+      "operations" : [
+        {
+          "operationId" : "getEvaluation",
+          "method" : "GET",
+          "path" : "/projects/{project}/evaluation",
+          "dto" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "schema",
+          "cardinality" : "single"
+        }
+      ]
     },
     {
       "entity" : "eu.wohlben.qits.agents.service.entity.ProjectAgent",
@@ -209,6 +789,48 @@
           "site" : "AgentsResource.turns(String, String, boolean)"
         },
         {
+          "type" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "site" : "EvaluationDto.of(Report)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ItemFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "site" : "Report.items()"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Ledger",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.report(Project, Instant, Instant)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$ModelFigures",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Ledger",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$PerVerified",
+          "kind" : "via",
+          "via" : "eu.wohlben.qits.agents.service.control.Evaluation$Ledger",
+          "site" : "Evaluation.figures(String, List, Ledger, Instant, Instant, Instant, double)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Project",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.project(String)"
+        },
+        {
+          "type" : "eu.wohlben.qits.agents.service.control.Evaluation$Report",
+          "kind" : "assembler",
+          "via" : null,
+          "site" : "Evaluation.report(Project, Instant, Instant)"
+        },
+        {
           "type" : "eu.wohlben.qits.agents.service.control.EvaluationLedger$UsageMessage",
           "kind" : "assembler",
           "via" : null,
@@ -230,6 +852,14 @@
           "path" : "/projects/{project}/agents/{name}/launch",
           "dto" : "eu.wohlben.qits.agents.service.api.AgentsWire$LaunchDto",
           "kind" : "returns",
+          "cardinality" : "single"
+        },
+        {
+          "operationId" : "getEvaluation",
+          "method" : "GET",
+          "path" : "/projects/{project}/evaluation",
+          "dto" : "eu.wohlben.qits.agents.service.api.EvaluationWire$EvaluationDto",
+          "kind" : "schema",
           "cardinality" : "single"
         },
         {

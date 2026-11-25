@@ -42,7 +42,12 @@ qits-maintenance's bumps — never by hand.
   return on a payload that will not bind (poison), let a database failure throw (the event stays
   owed). Their `consumerId`s (`agents-assignments`, `agents-comments`) are storage keys: never
   rename them. Every listener is passed to `EventstreamPactTest`, every consumed record is listed in
-  `api/ApiWireReflection`. Redelivery is idempotent by a read first, never by catching the unique
+  `api/ApiWireReflection`. The evaluation ledger's `eval-*` consumptions (qits-2521, `bus/Eval*Listener`
+  over `control/EvaluationLedger`) are the exception to "consume from now": they replay from the
+  epoch and settle events older than `qits.agents.evaluation.since` unwritten; their writes are
+  native `insert … on conflict` keyed by the source, so a replay gives the same ledger. The report
+  (`control/Evaluation.compute`) is a pure function over the rows, tested in memory
+  (`EvaluationReportTest`). Redelivery is idempotent by a read first, never by catching the unique
   index's violation (which would poison the claiming transaction).
 - **The reconcile is idempotent**: an unchanged roster writes nothing, not even `updated_at`
   (`RosterReconcileTest.anUnchangedRosterWritesNothingAtAll`). qits-idp and qits-projects are

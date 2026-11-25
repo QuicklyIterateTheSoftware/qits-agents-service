@@ -1,10 +1,19 @@
 package eu.wohlben.qits.agents.service.api;
 
 import eu.wohlben.qits.agents.runtime.SystemLeasesApi;
+import eu.wohlben.qits.agents.service.events.AgentActivityChanged;
+import eu.wohlben.qits.agents.service.events.AgentHarnessExited;
+import eu.wohlben.qits.agents.service.events.AgentPlaced;
+import eu.wohlben.qits.agents.service.events.AgentUsageRecorded;
+import eu.wohlben.qits.agents.service.events.AgentWaitClosed;
+import eu.wohlben.qits.agents.service.events.BuildStatusChanged;
 import eu.wohlben.qits.agents.service.events.EntityAssigned;
+import eu.wohlben.qits.agents.service.events.EntityBlockChanged;
 import eu.wohlben.qits.agents.service.events.EntityCommented;
+import eu.wohlben.qits.agents.service.events.EntityTransitioned;
 import eu.wohlben.qits.agents.service.events.ProjectAgentChanged;
 import eu.wohlben.qits.agents.service.events.ProjectAgentWaitClosed;
+import eu.wohlben.qits.agents.service.events.ReleaseRequestStateChanged;
 import eu.wohlben.qits.agents.service.idp.IdpTokensApi;
 import eu.wohlben.qits.agents.service.projects.ProjectsApi;
 import eu.wohlben.qits.eventstream.control.EventEnvelope;
@@ -18,7 +27,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
  * binary that is a 500 behind a green JVM suite.
  *
  * <p><b>A new served type joins this list in the commit that adds it</b>; ApiWireReflectionTest
- * fails naming any nested type of {@link AgentsWire} and any record of {@link ProjectsApi},
+ * fails naming any nested type of {@link AgentsWire} or {@link EvaluationWire} and any record of {@link ProjectsApi},
  * {@link IdpTokensApi} or {@link SystemLeasesApi} left out.
  */
 @RegisterForReflection(
@@ -33,12 +42,30 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
       AgentsWire.UsageMessage.class,
       AgentsWire.MeDto.class,
       AgentsWire.ErrorBody.class,
+      // The evaluation door (qits-2521).
+      EvaluationWire.EvaluationDto.class,
+      EvaluationWire.ModelDto.class,
+      EvaluationWire.PercentilesDto.class,
+      EvaluationWire.TokensDto.class,
+      EvaluationWire.PerVerifiedDto.class,
+      EvaluationWire.ItemDto.class,
       ProjectAgentChanged.class,
       // The qits-projects events the durable listeners bind with CanonicalJson.payloadTo: not
       // QitsEvents, so the library's own registration does not reach them.
       EntityAssigned.class,
       EntityCommented.class,
       ProjectAgentWaitClosed.class,
+      // The evaluation ledger's consumptions (bus/Eval*Listener, qits-2521).
+      EntityTransitioned.class,
+      EntityTransitioned.Entity.class,
+      EntityBlockChanged.class,
+      ReleaseRequestStateChanged.class,
+      BuildStatusChanged.class,
+      AgentPlaced.class,
+      AgentActivityChanged.class,
+      AgentHarnessExited.class,
+      AgentWaitClosed.class,
+      AgentUsageRecorded.class,
       // qits-eventstream serializes with its own ObjectMapper, so nothing registers its PUT body or
       // the frames it reads for us: without these the native image publishes nothing, silently.
       EventEnvelope.class,

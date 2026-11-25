@@ -1,0 +1,160 @@
+{
+  "project": "qits",
+  "since": "2026-01-01T00:00:00Z",
+  "until": "2026-01-01T00:00:00Z",
+  "models": [
+    {
+      "model": "WORKSPACE",
+      "taken": 1,
+      "refined": 0,
+      "verified": 1,
+      "dropped": 0,
+      "verifiedPerDay": 2.0,
+      "leadTimeSeconds": {
+        "p50": 14400,
+        "p90": 14400
+      },
+      "implementSeconds": {
+        "p50": 14400,
+        "p90": 14400
+      },
+      "tokens": [
+        {
+          "claudeModel": "claude-opus-5-5",
+          "messages": 2,
+          "inputTokens": 100,
+          "outputTokens": 10,
+          "cacheCreationTokens": 5,
+          "cacheReadTokens": 1000
+        }
+      ],
+      "overheadTokens": [],
+      "tokensPerVerified": {
+        "inputTokens": 100.0,
+        "outputTokens": 10.0,
+        "cacheCreationTokens": 5.0,
+        "cacheReadTokens": 1000.0
+      },
+      "busySeconds": 7200,
+      "idleSeconds": 7200,
+      "downSeconds": 0,
+      "busyShare": 0.5,
+      "waits": {
+        "MATCHED": 0,
+        "TIMED_OUT": 0,
+        "BROKEN": 0,
+        "CANCELLED": 0
+      },
+      "blocks": 0,
+      "requests": {
+        "FINALIZED": 1,
+        "REJECTED": 0,
+        "CONFLICTED": 0,
+        "FAILED": 0,
+        "WITHDRAWN": 0
+      },
+      "sessionExits": 0,
+      "ciRuns": 1.0,
+      "ciRunsRed": 0.0,
+      "ciRunSeconds": 1800.0,
+      "ciRunSecondsPerVerified": 1800.0
+    },
+    {
+      "model": "PROJECT_AGENT",
+      "taken": 1,
+      "refined": 0,
+      "verified": 0,
+      "dropped": 0,
+      "verifiedPerDay": 0.0,
+      "leadTimeSeconds": {
+        "p50": null,
+        "p90": null
+      },
+      "implementSeconds": {
+        "p50": null,
+        "p90": null
+      },
+      "tokens": [
+        {
+          "claudeModel": "claude-opus-5-5",
+          "messages": 1,
+          "inputTokens": 12,
+          "outputTokens": 340,
+          "cacheCreationTokens": 0,
+          "cacheReadTokens": 51234
+        }
+      ],
+      "overheadTokens": [
+        {
+          "claudeModel": "claude-opus-5-5",
+          "messages": 1,
+          "inputTokens": 3,
+          "outputTokens": 20,
+          "cacheCreationTokens": 100,
+          "cacheReadTokens": 0
+        }
+      ],
+      "tokensPerVerified": null,
+      "busySeconds": 7200,
+      "idleSeconds": 28800,
+      "downSeconds": 0,
+      "busyShare": 0.2,
+      "waits": {
+        "MATCHED": 0,
+        "TIMED_OUT": 0,
+        "BROKEN": 0,
+        "CANCELLED": 0
+      },
+      "blocks": 0,
+      "requests": {
+        "FINALIZED": 0,
+        "REJECTED": 0,
+        "CONFLICTED": 0,
+        "FAILED": 0,
+        "WITHDRAWN": 0
+      },
+      "sessionExits": 0,
+      "ciRuns": 0.0,
+      "ciRunsRed": 0.0,
+      "ciRunSeconds": 0.0,
+      "ciRunSecondsPerVerified": null
+    }
+  ],
+  "doubleWorked": [],
+  "items": [
+    {
+      "qualifiedId": "qits-201",
+      "model": "WORKSPACE",
+      "archetype": "TICKET",
+      "takenAt": "2026-01-01T00:00:00Z",
+      "verifiedAt": "2026-01-01T00:00:00Z",
+      "leadTimeSeconds": 14400,
+      "blocks": 0,
+      "requests": {
+        "FINALIZED": 1
+      },
+      "ciRuns": 1.0,
+      "ciRunSeconds": 1800.0,
+      "inputTokens": 100,
+      "outputTokens": 10,
+      "cacheCreationTokens": 5,
+      "cacheReadTokens": 1000
+    },
+    {
+      "qualifiedId": "qits-202",
+      "model": "PROJECT_AGENT",
+      "archetype": "TICKET",
+      "takenAt": "2026-01-01T00:00:00Z",
+      "verifiedAt": null,
+      "leadTimeSeconds": null,
+      "blocks": 0,
+      "requests": {},
+      "ciRuns": 0.0,
+      "ciRunSeconds": 0.0,
+      "inputTokens": 12,
+      "outputTokens": 340,
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 51234
+    }
+  ]
+}

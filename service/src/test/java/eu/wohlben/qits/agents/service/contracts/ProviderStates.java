@@ -5,6 +5,7 @@ import eu.wohlben.qits.agents.service.entity.ReportedState;
 import eu.wohlben.qits.agents.service.entity.TurnKind;
 import eu.wohlben.qits.agents.service.support.ContractCallers;
 import eu.wohlben.qits.agents.service.support.Fixtures;
+import eu.wohlben.qits.agents.service.support.LedgerRows;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Instant;
@@ -49,6 +50,13 @@ public class ProviderStates {
   public static final String A_RUNNING_AGENT_WITH_A_PENDING_WAIT_TURN_CALLING_AS_ITSELF =
       "a running agent with a pending wait turn calling as itself";
 
+  /**
+   * A small evaluation ledger (qits-2521) in the window 2026-11-25T00:00Z to 12:00Z: one WORKSPACE
+   * ticket verified with one CI run, one PROJECT_AGENT ticket with usage, the overseer's overhead,
+   * and both models' busy and idle states.
+   */
+  public static final String AN_EVALUATION_LEDGER = "an evaluation ledger";
+
   /** Who the operator recordings call as. */
   public static final String OPERATOR = "operator";
 
@@ -86,6 +94,7 @@ public class ProviderStates {
     states.put(
         A_RUNNING_AGENT_WITH_A_PENDING_WAIT_TURN_CALLING_AS_ITSELF,
         this::aRunningAgentWithAPendingWaitTurnCallingAsItself);
+    states.put(AN_EVALUATION_LEDGER, this::anEvaluationLedger);
   }
 
   public Set<String> names() {
@@ -143,6 +152,34 @@ public class ProviderStates {
     ContractCallers.bearer(SELF_BEARER, Fixtures.subject(Fixtures.PROJECT, "developer"), Roles.AGENT);
     Map<String, String> params = waitTurnParams();
     params.put("authorization", SELF_BEARER);
+    return new Setup(Collections.unmodifiableMap(params));
+  }
+
+  /** See {@link #AN_EVALUATION_LEDGER}. */
+  private Setup anEvaluationLedger() {
+    fixtures.clear();
+    fixtures.agent(AGENT, "developer", 2);
+    Instant t = Instant.parse("2026-11-25T00:00:00Z");
+    fixtures.claim(AGENT, LedgerRows.work("qits-202"), "qits-202", t.plusSeconds(7200), null);
+    fixtures.persist(
+        LedgerRows.item("qits-201", "TICKET", t.plusSeconds(3600), null),
+        LedgerRows.transition("qits-201", "IMPLEMENTING", t.plusSeconds(3600)),
+        LedgerRows.transition("qits-201", "VERIFIED", t.plusSeconds(5 * 3600)),
+        LedgerRows.request("rr-201", "FINALIZED", t.plusSeconds(6 * 3600), "ticket/qits-201"),
+        LedgerRows.requestState("rr-201", "FINALIZED", t.plusSeconds(6 * 3600)),
+        LedgerRows.run("run-201", "rr-201", t.plusSeconds(2 * 3600), t.plusSeconds(2 * 3600 + 1800), "SUCCESS"),
+        LedgerRows.usage("qits-201", "claude-opus-5-5", 2, 100, 10, 5, 1000, t.plusSeconds(7200)),
+        LedgerRows.activity("WORKSPACE", "ws-agent-201", "BUSY", t.plusSeconds(3600)),
+        LedgerRows.activity("WORKSPACE", "ws-agent-201", "IDLE", t.plusSeconds(3 * 3600)),
+        LedgerRows.activity("WORKSPACE", "ws-agent-201", "ENDED", t.plusSeconds(5 * 3600)),
+        LedgerRows.item("qits-202", "TICKET", null, t.plusSeconds(7200)),
+        LedgerRows.transition("qits-202", "IMPLEMENTING", t.plusSeconds(7200)),
+        LedgerRows.message(AGENT, "qits-202", "claude-opus-5-5", 12, 340, 0, 51234, t.plusSeconds(3 * 3600)),
+        LedgerRows.message(AGENT, null, "claude-opus-5-5", 3, 20, 100, 0, t.plusSeconds(3600)),
+        LedgerRows.activity("PROJECT_AGENT", "developer", "BUSY", t.plusSeconds(7200)),
+        LedgerRows.activity("PROJECT_AGENT", "developer", "IDLE", t.plusSeconds(4 * 3600)));
+    Map<String, String> params = new TreeMap<>();
+    params.put("project", Fixtures.PROJECT);
     return new Setup(Collections.unmodifiableMap(params));
   }
 

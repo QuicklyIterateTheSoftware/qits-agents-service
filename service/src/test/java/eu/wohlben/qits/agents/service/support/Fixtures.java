@@ -21,6 +21,7 @@ import eu.wohlben.qits.agents.service.entity.ReportedState;
 import eu.wohlben.qits.agents.service.entity.TurnKind;
 import eu.wohlben.qits.eventstream.QitsEvent;
 import eu.wohlben.qits.eventstream.QitsEventBus;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import io.quarkus.test.junit.QuarkusMock;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
@@ -71,6 +72,22 @@ public class Fixtures {
     EvalWait.deleteAll();
     EvalUsage.deleteAll();
     EvalUsageMessage.deleteAll();
+  }
+
+  /** Rows of the evaluation ledger (or any entity), persisted as given. */
+  @Transactional
+  public void persist(PanacheEntityBase... rows) {
+    for (PanacheEntityBase row : rows) {
+      row.persist();
+    }
+  }
+
+  /** Every row of one ledger table, detached. */
+  @Transactional
+  public <T> List<T> rows(Class<T> type) {
+    return EvalItem.getEntityManager()
+        .createQuery("from " + type.getSimpleName(), type)
+        .getResultList();
   }
 
   /** The project agents' recorded transcript usage, by session and message id. */

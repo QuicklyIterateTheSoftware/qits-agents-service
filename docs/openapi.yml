@@ -87,11 +87,74 @@ components:
           $ref: "#/components/schemas/Instant"
         releasedBy:
           type: string
+    EvaluationDto:
+      type: object
+      properties:
+        project:
+          type: string
+        since:
+          $ref: "#/components/schemas/Instant"
+        until:
+          $ref: "#/components/schemas/Instant"
+        models:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelDto"
+        doubleWorked:
+          type: array
+          items:
+            type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ItemDto"
     Instant:
       type: string
       format: date-time
       examples:
       - 2022-03-10T16:15:50Z
+    ItemDto:
+      type: object
+      properties:
+        qualifiedId:
+          type: string
+        model:
+          type: string
+        archetype:
+          type: string
+        takenAt:
+          $ref: "#/components/schemas/Instant"
+        verifiedAt:
+          $ref: "#/components/schemas/Instant"
+        leadTimeSeconds:
+          type: integer
+          format: int64
+        blocks:
+          type: integer
+          format: int64
+        requests:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+        ciRuns:
+          type: number
+          format: double
+        ciRunSeconds:
+          type: number
+          format: double
+        inputTokens:
+          type: integer
+          format: int64
+        outputTokens:
+          type: integer
+          format: int64
+        cacheCreationTokens:
+          type: integer
+          format: int64
+        cacheReadTokens:
+          type: integer
+          format: int64
     LaunchDto:
       type: object
       properties:
@@ -128,6 +191,104 @@ components:
         generation:
           type: integer
           format: int32
+    ModelDto:
+      type: object
+      properties:
+        model:
+          type: string
+        taken:
+          type: integer
+          format: int64
+        refined:
+          type: integer
+          format: int64
+        verified:
+          type: integer
+          format: int64
+        dropped:
+          type: integer
+          format: int64
+        verifiedPerDay:
+          type: number
+          format: double
+        leadTimeSeconds:
+          $ref: "#/components/schemas/PercentilesDto"
+        implementSeconds:
+          $ref: "#/components/schemas/PercentilesDto"
+        tokens:
+          type: array
+          items:
+            $ref: "#/components/schemas/TokensDto"
+        overheadTokens:
+          type: array
+          items:
+            $ref: "#/components/schemas/TokensDto"
+        tokensPerVerified:
+          $ref: "#/components/schemas/PerVerifiedDto"
+        busySeconds:
+          type: integer
+          format: int64
+        idleSeconds:
+          type: integer
+          format: int64
+        downSeconds:
+          type: integer
+          format: int64
+        busyShare:
+          type: number
+          format: double
+        waits:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+        blocks:
+          type: integer
+          format: int64
+        requests:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+        sessionExits:
+          type: integer
+          format: int64
+        ciRuns:
+          type: number
+          format: double
+        ciRunsRed:
+          type: number
+          format: double
+        ciRunSeconds:
+          type: number
+          format: double
+        ciRunSecondsPerVerified:
+          type: number
+          format: double
+    PerVerifiedDto:
+      type: object
+      properties:
+        inputTokens:
+          type: number
+          format: double
+        outputTokens:
+          type: number
+          format: double
+        cacheCreationTokens:
+          type: number
+          format: double
+        cacheReadTokens:
+          type: number
+          format: double
+    PercentilesDto:
+      type: object
+      properties:
+        p50:
+          type: integer
+          format: int64
+        p90:
+          type: integer
+          format: int64
     ReportRequest:
       type: object
       properties:
@@ -140,6 +301,26 @@ components:
           type: string
         detail:
           type: string
+    TokensDto:
+      type: object
+      properties:
+        claudeModel:
+          type: string
+        messages:
+          type: integer
+          format: int64
+        inputTokens:
+          type: integer
+          format: int64
+        outputTokens:
+          type: integer
+          format: int64
+        cacheCreationTokens:
+          type: integer
+          format: int64
+        cacheReadTokens:
+          type: integer
+          format: int64
     TurnDto:
       type: object
       properties:
@@ -543,6 +724,53 @@ paths:
         - qits:desk-admin
         - qits:system
         - qits:agent
+  /agents/api/projects/{project}/evaluation:
+    get:
+      summary: "The two delivery models compared over a window, as JSON or Markdown"
+      operationId: getEvaluation
+      parameters:
+      - name: project
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: since
+        in: query
+        schema:
+          type: string
+      - name: until
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: The report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvaluationDto"
+            text/markdown:
+              schema:
+                type: string
+        "400":
+          description: "since or until is no ISO-8601 instant, or until is not after\
+            \ since"
+        "404":
+          description: No such project
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      tags:
+      - Evaluation Resource
+      security:
+      - SecurityScheme:
+        - qits:admin
+        - qits:admin-agent
+        - qits:desk-admin
+        - qits:desk
+        - qits:agent
+        - qits:system
 info:
   title: qits-agents API
   version: "0"

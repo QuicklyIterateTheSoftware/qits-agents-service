@@ -374,6 +374,38 @@
           }
         }
       ]
+    },
+    {
+      "name": "an evaluation ledger",
+      "slug": "an-evaluation-ledger",
+      "params": {
+        "project": "qits"
+      },
+      "dependsOn": [],
+      "operations": [
+        {
+          "operationId": "getEvaluation",
+          "method": "GET",
+          "path": "/agents/api/projects/{project}/evaluation",
+          "query": {
+            "since": "2026-11-25T00:00:00Z",
+            "until": "2026-11-25T12:00:00Z"
+          },
+          "status": 200,
+          "file": "an-evaluation-ledger/getEvaluation.json",
+          "frozen": {
+            "ids": [],
+            "instants": [
+              "$.since",
+              "$.until",
+              "$.items[*].takenAt",
+              "$.items[*].verifiedAt"
+            ],
+            "strings": [],
+            "listFilteredTo": null
+          }
+        }
+      ]
     }
   ]
 }
