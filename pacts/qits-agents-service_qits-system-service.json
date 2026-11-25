@@ -399,6 +399,9 @@
         "body": {
           "content": {
             "id": "00000000-0000-4000-8000-000000000002",
+            "spec": {
+              "image": "registry.qits.wohlben.eu/qits/agent:2026.1"
+            },
             "specHash": "spec-hash-1",
             "state": "RUNNING"
           },
@@ -418,6 +421,14 @@
                 {
                   "match": "regex",
                   "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                }
+              ]
+            },
+            "$.spec.image": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
                 }
               ]
             },

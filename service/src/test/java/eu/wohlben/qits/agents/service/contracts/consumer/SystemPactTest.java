@@ -34,7 +34,8 @@ import org.junit.jupiter.api.Test;
  *       ({@code slotType AGENT}, {@code ownerRef <agentId>}, {@code workKey agent-<agentId>}, {@code
  *       priority 0}) and records the answer's id;
  *   <li>{@code getLease}, {@code replaceLeaseSpec} and {@code endLease} in {@value #RUNNING}: the
- *       sweep reads the lease, rolls it onto a changed spec, and ends it for a RETIRED agent;
+ *       sweep reads the lease, rolls it onto a changed spec, and ends it for a RETIRED agent ({@code
+ *       getLease}'s {@code spec.image} keeps a roll from moving it to an older tag, qits-2667);
  *   <li>{@code listLeases} in {@value #RUNNING}: the adoption of a lease a crash left unrecorded.
  * </ul>
  *
@@ -60,7 +61,7 @@ class SystemPactTest {
   static final GoldenInteraction GET =
       GoldenInteraction.of(Trigger.schedule("AgentLeases.observe"), RUNNING, "getLease")
           .header("Authorization", "{authorization}")
-          .consumes("id", "state", "specHash");
+          .consumes("id", "state", "specHash", "spec.image");
 
   static final GoldenInteraction LIST =
       GoldenInteraction.of(Trigger.schedule("AgentLeases.apply"), RUNNING, "listLeases")
@@ -107,6 +108,9 @@ class SystemPactTest {
           assertTrue(lease.isPresent());
           assertEquals(leaseId, lease.get().id());
           assertEquals(LeaseState.RUNNING, lease.get().leaseState());
+          assertEquals(
+              SYSTEM.json(RUNNING, GET.operationId()).path("spec").path("image").asText(),
+              lease.get().image());
         });
   }
 

@@ -3,6 +3,7 @@ package eu.wohlben.qits.agents.service.support;
 import eu.wohlben.qits.agents.runtime.AgentSpecs;
 import eu.wohlben.qits.agents.runtime.SystemLeasesApi.Lease;
 import eu.wohlben.qits.agents.runtime.SystemLeasesApi.LeaseSpec;
+import eu.wohlben.qits.agents.runtime.SystemLeasesApi.LeaseSpecView;
 import eu.wohlben.qits.agents.runtime.SystemLeasesClient;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,8 +30,13 @@ public class FakeSystem extends SystemLeasesClient {
 
   /** A lease qits-system holds for {@code agentId}, in {@code state}, running a spec of this hash. */
   public UUID hold(UUID agentId, String state, String specHash) {
+    return hold(agentId, state, specHash, null);
+  }
+
+  /** {@link #hold(UUID, String, String)}, answering {@code image} as the lease's spec image. */
+  public UUID hold(UUID agentId, String state, String specHash, String image) {
     UUID id = UUID.randomUUID();
-    leases.put(id, lease(id, agentId, state, specHash, null));
+    leases.put(id, lease(id, agentId, state, specHash, null, image));
     return id;
   }
 
@@ -39,7 +45,9 @@ public class FakeSystem extends SystemLeasesClient {
     Lease was = leases.get(leaseId);
     leases.put(
         leaseId,
-        new Lease(was.id(), was.slotType(), was.ownerRef(), was.workKey(), state, was.specHash(), exitCode, null));
+        new Lease(
+            was.id(), was.slotType(), was.ownerRef(), was.workKey(), state, was.specHash(), exitCode,
+            null, was.spec()));
   }
 
   public List<Call> writes() {
@@ -61,7 +69,7 @@ public class FakeSystem extends SystemLeasesClient {
       throw new LeaseRefused(409, LEASE_EXISTS, "a live lease holds agent-" + agentId, null);
     }
     UUID id = UUID.randomUUID();
-    Lease lease = lease(id, agentId, "QUEUED", AgentSpecs.hash(spec), null);
+    Lease lease = lease(id, agentId, "QUEUED", AgentSpecs.hash(spec), null, spec.image());
     leases.put(id, lease);
     return lease;
   }
@@ -86,7 +94,16 @@ public class FakeSystem extends SystemLeasesClient {
       throw new LeaseRefused(404, null, "no lease " + leaseId, null);
     }
     Lease rolled =
-        new Lease(was.id(), was.slotType(), was.ownerRef(), was.workKey(), was.state(), AgentSpecs.hash(spec), null, null);
+        new Lease(
+            was.id(),
+            was.slotType(),
+            was.ownerRef(),
+            was.workKey(),
+            was.state(),
+            AgentSpecs.hash(spec),
+            null,
+            null,
+            new LeaseSpecView(spec.image()));
     leases.put(leaseId, rolled);
     return rolled;
   }
@@ -99,13 +116,24 @@ public class FakeSystem extends SystemLeasesClient {
       return Optional.empty();
     }
     Lease ended =
-        new Lease(was.id(), was.slotType(), was.ownerRef(), was.workKey(), "ENDED", was.specHash(), was.exitCode(), null);
+        new Lease(
+            was.id(), was.slotType(), was.ownerRef(), was.workKey(), "ENDED", was.specHash(),
+            was.exitCode(), null, was.spec());
     leases.put(leaseId, ended);
     return Optional.of(ended);
   }
 
-  private static Lease lease(UUID id, UUID agentId, String state, String specHash, Integer exitCode) {
+  private static Lease lease(
+      UUID id, UUID agentId, String state, String specHash, Integer exitCode, String image) {
     return new Lease(
-        id, SLOT_TYPE, agentId.toString(), workKey(agentId), state, specHash, exitCode, null);
+        id,
+        SLOT_TYPE,
+        agentId.toString(),
+        workKey(agentId),
+        state,
+        specHash,
+        exitCode,
+        null,
+        image == null ? null : new LeaseSpecView(image));
   }
 }

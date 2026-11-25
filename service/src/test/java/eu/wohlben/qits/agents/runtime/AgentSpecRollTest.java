@@ -49,7 +49,7 @@ class AgentSpecRollTest {
 
   /** A RUNNING lease the row names, running {@code spec}. */
   private Lease running(LeaseSpec spec) {
-    UUID leaseId = system.hold(DEVELOPER, "RUNNING", AgentSpecs.hash(spec));
+    UUID leaseId = system.hold(DEVELOPER, "RUNNING", AgentSpecs.hash(spec), spec.image());
     fixtures.lease(DEVELOPER, leaseId);
     return system.leases.get(leaseId);
   }
@@ -93,6 +93,103 @@ class AgentSpecRollTest {
 
     assertEquals(1, system.writes("roll").size());
     assertTrue(system.writes("roll").getFirst().spec().image().endsWith(":" + AgentImage.VERSION));
+  }
+
+  // --- never backwards (qits-2667) -------------------------------------------------------------
+
+  /** The current spec with its image's tag replaced by {@code tag}. */
+  private LeaseSpec taggedAt(String tag) {
+    LeaseSpec current = specs.compose(fixtures.read(DEVELOPER));
+    return new LeaseSpec(
+        current.image().replace(":" + AgentImage.VERSION, ":" + tag),
+        current.env(),
+        current.user(),
+        current.limits());
+  }
+
+  /**
+   * The bug: during a rolling deploy the newer instance rolled the lease onto its newer image, and
+   * this — the older — instance must not roll it back (the two ping-ponged, restarting it each time).
+   */
+  @Test
+  void aLeaseOnANewerImageTagIsNotRolledBack() {
+    Lease lease = running(taggedAt("9999.1231.235959"));
+    assertTrue(lease.image().endsWith(":9999.1231.235959"));
+
+    assertFalse(roll.roll(fixtures.read(DEVELOPER), lease));
+    assertEquals(List.of(), system.writes());
+  }
+
+  @Test
+  void aLeaseOnANewerImageTagIsNotRolledBackEvenForARotatedToken() {
+    Lease lease = running(taggedAt("9999.1231.235959"));
+    fixtures.token(DEVELOPER, "qits_tok_rotated");
+
+    assertFalse(roll.roll(fixtures.read(DEVELOPER), lease));
+    assertEquals(List.of(), system.writes());
+  }
+
+  @Test
+  void aLeaseOnAnOlderShorterTagStillRolls() {
+    Lease lease = running(taggedAt("2026.1"));
+
+    assertTrue(roll.roll(fixtures.read(DEVELOPER), lease));
+    assertEquals(1, system.writes("roll").size());
+    assertTrue(system.writes("roll").getFirst().spec().image().endsWith(":" + AgentImage.VERSION));
+  }
+
+  @Test
+  void theSameTagWithARotatedTokenStillRolls() {
+    Lease lease = running(specs.compose(fixtures.read(DEVELOPER)));
+    assertTrue(lease.image().endsWith(":" + AgentImage.VERSION));
+    fixtures.token(DEVELOPER, "qits_tok_rotated");
+
+    assertTrue(roll.roll(fixtures.read(DEVELOPER), lease));
+    assertEquals(1, system.writes("roll").size());
+  }
+
+  @Test
+  void aLeaseWithoutAnImageRollsAsBefore() {
+    UUID leaseId = system.hold(DEVELOPER, "RUNNING", "stale");
+    fixtures.lease(DEVELOPER, leaseId);
+    Lease lease = system.leases.get(leaseId);
+    assertEquals(null, lease.spec());
+
+    assertTrue(roll.roll(fixtures.read(DEVELOPER), lease));
+    assertEquals(1, system.writes("roll").size());
+  }
+
+  @Test
+  void aLeaseOnANonNumericTagRollsAsBefore() {
+    Lease lease = running(taggedAt("latest"));
+
+    assertTrue(roll.roll(fixtures.read(DEVELOPER), lease));
+    assertEquals(1, system.writes("roll").size());
+  }
+
+  @Test
+  void tagsCompareNumericallySegmentBySegment() {
+    assertTrue(AgentSpecRoll.newerAgentTag("2026.1125.201021", "2026.1125.93924"));
+    assertFalse(AgentSpecRoll.newerAgentTag("2026.1125.93924", "2026.1125.201021"));
+    assertFalse(AgentSpecRoll.newerAgentTag("2026.1125.201021", "2026.1125.201021"));
+    assertFalse(AgentSpecRoll.newerAgentTag("2026.1", "2026.1125.1"));
+    assertTrue(AgentSpecRoll.newerAgentTag("2026.1125.1", "2026.1"));
+    assertFalse(AgentSpecRoll.newerAgentTag("2026.1", "2026.1.0"));
+    assertFalse(AgentSpecRoll.newerAgentTag("latest", "2026.1125.1"));
+    assertFalse(AgentSpecRoll.newerAgentTag("2026.1125.1", "latest"));
+    assertFalse(AgentSpecRoll.newerAgentTag("2026..1", "2026.1"));
+    assertFalse(AgentSpecRoll.newerAgentTag(null, "2026.1"));
+  }
+
+  @Test
+  void onlyAQitsAgentImageHasATag() {
+    assertEquals(
+        "2026.1", AgentSpecRoll.agentTag("registry.qits.wohlben.eu/qits/agent:2026.1"));
+    assertEquals("2026.1", AgentSpecRoll.agentTag("qits/agent:2026.1"));
+    assertEquals(null, AgentSpecRoll.agentTag("registry.qits.wohlben.eu/qits/other:2026.1"));
+    assertEquals(null, AgentSpecRoll.agentTag("registry.qits.wohlben.eu/notqits/agent:2026.1"));
+    assertEquals(null, AgentSpecRoll.agentTag("registry:5000/qits/agent"));
+    assertEquals(null, AgentSpecRoll.agentTag(null));
   }
 
   @Test

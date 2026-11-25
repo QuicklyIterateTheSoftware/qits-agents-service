@@ -96,7 +96,8 @@ public interface SystemLeasesApi {
    * One lease as qits-system answers it, narrowed to what the runtime reads. {@code specHash} is
    * qits-system's sha256 of the canonical spec it holds — the same {@link AgentSpecs#hash} computes,
    * which is how a roll is decided without a stored copy of the spec (env values are redacted on
-   * every answer).
+   * every answer). {@code spec} is read for its image alone — what a roll compares tags by
+   * (qits-2667); it is null when qits-system answers none.
    */
   @JsonIgnoreProperties(ignoreUnknown = true)
   record Lease(
@@ -107,12 +108,25 @@ public interface SystemLeasesApi {
       String state,
       String specHash,
       Integer exitCode,
-      String detail) {
+      String detail,
+      LeaseSpecView spec) {
 
     public LeaseState leaseState() {
       return LeaseState.parse(state);
     }
+
+    /** The image the lease runs, or null when the answer carries none. */
+    public String image() {
+      return spec == null ? null : spec.image();
+    }
   }
+
+  /**
+   * A lease's {@code spec} as an answer carries it, narrowed to its image: every env value is
+   * redacted there, and nothing else of it is read.
+   */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  record LeaseSpecView(String image) {}
 
   /** A lease's life, as qits-system spells it; {@link #UNKNOWN} for a word this build does not know. */
   enum LeaseState {
