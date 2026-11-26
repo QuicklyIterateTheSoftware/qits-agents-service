@@ -81,7 +81,7 @@
         <qits.projects-golden-masters.version>2026.1126.34009</qits.projects-golden-masters.version>
         <!-- qits-system's lease doors, as the AGENT tenant asks them (runtime/SystemLeasesClient,
              qits-2519): the states `a queued agent lease` and `a running agent lease`. -->
-        <qits.system-golden-masters.version>2026.1123.194748</qits.system-golden-masters.version>
+        <qits.system-golden-masters.version>2026.1126.200147</qits.system-golden-masters.version>
         <!-- The agent image pin (qits-2519): AgentImage.VERSION is the `qits/agent` tag that
              runtime/AgentSpecs puts in every AGENT lease. ONE PROPERTY REFERENCE, so qits-
              maintenance's bump train can move it; pinned here by hand once (a first adoption gets no
