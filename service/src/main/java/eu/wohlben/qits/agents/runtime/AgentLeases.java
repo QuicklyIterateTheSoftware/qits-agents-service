@@ -35,10 +35,12 @@ import org.jboss.logging.Logger;
  * the next sweep asks again. The spec carries the agent's token and is never logged.
  *
  * <p><b>The platform CA's anchors</b> ({@link TrustAnchorSource}, qits-2636) are read HERE, in
- * {@link #apply}, and only when a brand new lease is asked for — never in {@link AgentSpecRoll},
- * which composes from whatever the row already holds. The bundle is frozen onto the row at the same
+ * {@link #apply}, when a brand new lease is asked for — never in {@link AgentSpecRoll}, which
+ * composes from whatever the row already holds. The bundle is frozen onto the row at the same
  * moment the lease id is ({@code Agents#storeLease}), so a CA rotation alone never changes the spec
- * of a lease that already exists; the new bundle reaches the agent at its next lease.
+ * of a lease that already exists; the new bundle reaches the agent at its next lease. The one other
+ * read is {@link #backfillTrustAnchors} (qits-2525): a live lease whose row froze NO bundle takes
+ * today's once, which rolls it once; a row that holds one is never touched.
  */
 @ApplicationScoped
 public class AgentLeases {
@@ -182,6 +184,42 @@ public class AgentLeases {
     }
   }
 
+  /**
+   * A live lease whose row froze no bundle takes today's (qits-2525): the lease was asked for
+   * before {@code trust_anchors} existed (every lease older than qits-2636 got the column null), or
+   * while no bundle was held yet (the poller's first fetch had not landed). Without this the agent
+   * ran without {@code QITS_TRUST_ANCHORS} until its next lease, and a long-lived one never gets a
+   * next lease — a roll recomposes from the same empty row.
+   *
+   * <p>Today's bundle is stored on the row, which moves {@link AgentSpecs#compose}'s hash, so the
+   * {@link AgentSpecRoll} that follows in the same pass rolls the lease once. While no bundle is
+   * held (the CA unreachable) nothing is stored, the hash stays put, nothing rolls, and the next
+   * sweep asks again. A row already holding a bundle is never touched, so a CA rotation alone still
+   * rolls nobody. Answers whether {@code agent} (updated in place) now holds a bundle it did not.
+   */
+  public boolean backfillTrustAnchors(ProjectAgent agent) {
+    if (agent == null
+        || agent.leaseId == null
+        || (agent.trustAnchors != null && !agent.trustAnchors.isBlank())) {
+      return false;
+    }
+    String pem = currentTrustAnchors();
+    if (pem == null) {
+      LOG.debugf(
+          "agent %s/%s's lease %s holds no trust anchors and none is held yet; the next sweep asks again",
+          agent.projectSlug, agent.name, agent.leaseId);
+      return false;
+    }
+    if (!agents.storeTrustAnchors(agent.id, agent.leaseId, pem)) {
+      return false;
+    }
+    agent.trustAnchors = pem;
+    LOG.infof(
+        "agent %s/%s's lease %s was asked for without trust anchors; froze today's bundle onto it",
+        agent.projectSlug, agent.name, agent.leaseId);
+    return true;
+  }
+
   // --- internals ---------------------------------------------------------------------------------
 
   private void releaseAgain(UUID agentId) {
@@ -238,7 +276,7 @@ public class AgentLeases {
     try {
       return trustAnchorSource.pem().filter(pem -> !pem.isBlank()).orElse(null);
     } catch (RuntimeException e) {
-      LOG.warnf(e, "could not read the trust anchor bundle; the lease is asked for without it");
+      LOG.warnf(e, "could not read the trust anchor bundle; the lease goes without it for now");
       return null;
     }
   }

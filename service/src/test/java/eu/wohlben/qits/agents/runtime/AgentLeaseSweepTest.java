@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import eu.wohlben.qits.agents.service.control.Agents;
 import eu.wohlben.qits.agents.service.entity.ReportedState;
 import eu.wohlben.qits.agents.service.support.FakeSystem;
+import eu.wohlben.qits.agents.service.support.FakeTrustAnchors;
 import eu.wohlben.qits.agents.service.support.Fixtures;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -37,13 +38,18 @@ class AgentLeaseSweepTest {
 
   @Inject Fixtures fixtures;
 
+  @Inject AgentSpecs specs;
+
   FakeSystem system;
+
+  FakeTrustAnchors anchors;
 
   @BeforeEach
   void arrange() {
     fixtures.clear();
     Fixtures.recordEvents();
     system = Fixtures.system(new FakeSystem());
+    anchors = Fixtures.trustAnchors(new FakeTrustAnchors());
     fixtures.agent(DEVELOPER, "developer", 1);
   }
 
@@ -85,6 +91,69 @@ class AgentLeaseSweepTest {
     assertEquals(1, sweep.sweep().rolled());
     assertEquals(leaseId, system.writes("roll").getFirst().leaseId());
     assertEquals(0, sweep.sweep().rolled());
+  }
+
+  // --- a lease asked for without the platform CA's anchors (qits-2525) ---------------------------
+
+  static final String PEM = "-----BEGIN CERTIFICATE-----\nanchor\n-----END CERTIFICATE-----";
+
+  /**
+   * The live finding: lease 7cb8266d was asked for on 2026-11-24, before qits-2636 added {@code
+   * trust_anchors}, so its row holds null and every roll since recomposed without the variable.
+   * Once a bundle is held, the pass freezes it onto the row and rolls the lease exactly once.
+   */
+  @Test
+  void aLiveLeaseWithoutFrozenAnchorsTakesTodaysBundleAndRollsOnce() {
+    UUID leaseId =
+        system.hold(DEVELOPER, "RUNNING", AgentSpecs.hash(specs.compose(fixtures.read(DEVELOPER))));
+    fixtures.lease(DEVELOPER, leaseId);
+    anchors.set(PEM);
+
+    assertEquals(1, sweep.sweep().rolled());
+
+    assertEquals(PEM, fixtures.read(DEVELOPER).trustAnchors);
+    assertEquals(1, system.writes().size());
+    FakeSystem.Call put = system.writes("roll").getFirst();
+    assertEquals(leaseId, put.leaseId());
+    assertEquals(PEM, put.spec().env().get(AgentSpecs.TRUST_ANCHORS_ENV));
+    assertEquals(0, sweep.sweep().rolled(), "one roll, never a loop");
+    assertEquals(1, system.writes().size());
+  }
+
+  /** The CA unreachable (no bundle held): nothing stored, nothing rolled, and the next pass retries. */
+  @Test
+  void whileNoBundleIsHeldNothingRollsAndALaterPassStillBackfills() {
+    sweep.sweep(); // leased while no bundle is held: the row freezes none
+    assertNull(fixtures.read(DEVELOPER).trustAnchors);
+    int writes = system.writes().size();
+
+    for (int i = 0; i < 3; i++) {
+      assertTrue(sweep.sweep().quiet());
+    }
+    assertEquals(writes, system.writes().size(), "no roll while the CA cannot be read");
+    assertNull(fixtures.read(DEVELOPER).trustAnchors);
+
+    anchors.set(PEM);
+    assertEquals(1, sweep.sweep().rolled());
+    assertEquals(PEM, fixtures.read(DEVELOPER).trustAnchors);
+    assertEquals(
+        PEM, system.writes("roll").getFirst().spec().env().get(AgentSpecs.TRUST_ANCHORS_ENV));
+    assertEquals(0, sweep.sweep().rolled());
+  }
+
+  /** A row holding a bundle is never backfilled: a CA rotation alone still rolls nobody. */
+  @Test
+  void aFrozenBundleIsKeptThroughARotation() {
+    anchors.set("pem-v1");
+    sweep.sweep();
+    assertEquals("pem-v1", fixtures.read(DEVELOPER).trustAnchors);
+    int writes = system.writes().size();
+
+    anchors.set("pem-v2");
+
+    assertTrue(sweep.sweep().quiet());
+    assertEquals(writes, system.writes().size());
+    assertEquals("pem-v1", fixtures.read(DEVELOPER).trustAnchors);
   }
 
   @Test

@@ -23,7 +23,9 @@ import org.jboss.logging.Logger;
  * <ul>
  *   <li>every RUNNING agent without a lease gets one ({@link AgentLeases#apply});
  *   <li>every RUNNING agent with one has it read ({@link AgentLeases#observe}: EXITED, FAILED and
- *       ENDED re-lease) and, while it is live, rolled onto the current spec ({@link AgentSpecRoll});
+ *       ENDED re-lease) and, while it is live, given today's trust anchors when its row froze none
+ *       ({@link AgentLeases#backfillTrustAnchors}, qits-2525) and rolled onto the current spec
+ *       ({@link AgentSpecRoll});
  *   <li>every RETIRED agent with a lease has it ended ({@link AgentLeases#end}).
  * </ul>
  *
@@ -129,6 +131,10 @@ public class AgentLeaseSweep {
         }
         observed++;
         var live = leases.observe(agent);
+        if (live.isPresent()) {
+          // A lease asked for before any bundle was held takes today's once (qits-2525).
+          leases.backfillTrustAnchors(agent);
+        }
         if (live.isPresent() && roll.roll(agent, live.get())) {
           rolled++;
         }
