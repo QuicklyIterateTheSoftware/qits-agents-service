@@ -27,6 +27,7 @@ public final class AgentsWire {
       Integer reportedGeneration,
       String sessionId,
       Instant reportedAt,
+      String reportedDetail,
       String declarationHash,
       String tokenSubject,
       long openClaims) {
@@ -41,6 +42,7 @@ public final class AgentsWire {
           agent.reportedGeneration,
           agent.sessionId,
           agent.reportedAt,
+          agent.reportedDetail,
           agent.declarationHash,
           agent.tokenSubject,
           openClaims);
@@ -57,6 +59,7 @@ public final class AgentsWire {
       Integer reportedGeneration,
       String sessionId,
       Instant reportedAt,
+      String reportedDetail,
       String declarationHash,
       String tokenSubject,
       long openClaims,
@@ -75,6 +78,7 @@ public final class AgentsWire {
           agent.reportedGeneration,
           agent.sessionId,
           agent.reportedAt,
+          agent.reportedDetail,
           agent.declarationHash,
           agent.tokenSubject,
           openClaims,

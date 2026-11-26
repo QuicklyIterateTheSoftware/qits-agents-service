@@ -226,6 +226,28 @@ public class Agents {
   }
 
   /**
+   * Freezes {@code trustAnchors} onto a row whose lease {@code leaseId} was asked for while no
+   * bundle was held (qits-2525) — only while the row still names that lease and still holds none,
+   * so a bundle frozen by a create is never replaced: a CA rotation alone still never moves it.
+   * Answers whether it was stored. Publishes nothing.
+   */
+  @Transactional
+  public boolean storeTrustAnchors(UUID agentId, UUID leaseId, String trustAnchors) {
+    if (leaseId == null || trustAnchors == null || trustAnchors.isBlank()) {
+      return false;
+    }
+    ProjectAgent agent = ProjectAgent.findById(agentId);
+    if (agent == null
+        || !leaseId.equals(agent.leaseId)
+        || (agent.trustAnchors != null && !agent.trustAnchors.isBlank())) {
+      return false;
+    }
+    agent.trustAnchors = trustAnchors;
+    agent.updatedAt = now();
+    return true;
+  }
+
+  /**
    * Forgets the agent's lease — only while the row still names that lease. Publishes nothing.
    */
   @Transactional

@@ -25,6 +25,8 @@ components:
           type: string
         reportedAt:
           $ref: "#/components/schemas/Instant"
+        reportedDetail:
+          type: string
         declarationHash:
           type: string
         tokenSubject:
@@ -61,6 +63,8 @@ components:
           type: string
         reportedAt:
           $ref: "#/components/schemas/Instant"
+        reportedDetail:
+          type: string
         declarationHash:
           type: string
         tokenSubject:

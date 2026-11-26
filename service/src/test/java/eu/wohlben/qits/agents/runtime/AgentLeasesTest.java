@@ -1,6 +1,7 @@
 package eu.wohlben.qits.agents.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -85,6 +86,41 @@ class AgentLeasesTest {
     assertNull(fixtures.read(DEVELOPER).trustAnchors);
     FakeSystem.Call create = system.writes("create").getFirst();
     assertTrue(!create.spec().env().containsKey(AgentSpecs.TRUST_ANCHORS_ENV));
+  }
+
+  @Test
+  void backfillFreezesTodaysBundleOnlyOntoALeasedRowHoldingNone() {
+    UUID leaseId = system.hold(DEVELOPER, "RUNNING", "h");
+    fixtures.lease(DEVELOPER, leaseId);
+
+    assertFalse(leases.backfillTrustAnchors(fixtures.read(DEVELOPER)), "no bundle held yet");
+    assertNull(fixtures.read(DEVELOPER).trustAnchors);
+
+    anchors.set("pem-v1");
+    ProjectAgent agent = fixtures.read(DEVELOPER);
+    assertTrue(leases.backfillTrustAnchors(agent));
+    assertEquals("pem-v1", agent.trustAnchors, "the caller's row is updated in place");
+    assertEquals("pem-v1", fixtures.read(DEVELOPER).trustAnchors);
+
+    anchors.set("pem-v2");
+    assertFalse(leases.backfillTrustAnchors(fixtures.read(DEVELOPER)), "a frozen bundle stays");
+    assertEquals("pem-v1", fixtures.read(DEVELOPER).trustAnchors);
+    assertEquals(List.of(), system.writes(), "the backfill itself sends nothing");
+    assertEquals(List.of(), events, "nor publishes");
+  }
+
+  @Test
+  void backfillLeavesARowWithoutALeaseOrNamingAnotherAlone() {
+    anchors.set("pem-v1");
+    assertFalse(leases.backfillTrustAnchors(fixtures.read(DEVELOPER)), "no lease");
+
+    UUID leaseId = system.hold(DEVELOPER, "RUNNING", "h");
+    fixtures.lease(DEVELOPER, leaseId);
+    ProjectAgent stale = fixtures.read(DEVELOPER);
+    fixtures.lease(DEVELOPER, UUID.randomUUID()); // re-leased meanwhile
+
+    assertFalse(leases.backfillTrustAnchors(stale));
+    assertNull(fixtures.read(DEVELOPER).trustAnchors);
   }
 
   @Test

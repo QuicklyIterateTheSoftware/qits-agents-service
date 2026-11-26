@@ -91,6 +91,7 @@ class AgentsApiTest {
             .body("[0].generation", equalTo(2))
             .body("[0].desiredState", equalTo("RUNNING"))
             .body("[0].reportedState", equalTo("UNKNOWN"))
+            .body("[0].reportedDetail", nullValue())
             .body("[0].tokenSubject", equalTo("tok-project-agent-qits-developer"))
             .extract()
             .asString();
@@ -107,6 +108,7 @@ class AgentsApiTest {
         .statusCode(200)
         .body("brief", equalTo("You are the developer of the qits project."))
         .body("recoveryPrompt", containsString("restarted"))
+        .body("reportedDetail", nullValue())
         .body("model", nullValue())
         .body(not(containsString("qits_tok_")));
     as(operator).get(AGENTS + "/nobody").then().statusCode(404);
@@ -185,8 +187,9 @@ class AgentsApiTest {
     assertEquals("developer", changed.get(0).agentName());
     assertEquals("BUSY", changed.get(0).reportedState());
     assertEquals(Fixtures.PROJECT_ID, changed.get(0).projectId());
+    as(operator).get(DEV).then().statusCode(200).body("reportedDetail", equalTo("working"));
 
-    // The same state again: recorded, not published.
+    // The same state again, with no detail: recorded, not published, and the stale detail clears.
     as(self)
         .contentType(ContentType.JSON)
         .body(Map.of("generation", 1, "state", "BUSY"))
@@ -195,6 +198,11 @@ class AgentsApiTest {
         .statusCode(204);
     assertEquals(1, Fixtures.of(events, ProjectAgentChanged.class).size());
     assertEquals(1, fixtures.read(DEVELOPER).reportedGeneration);
+    assertEquals(
+        null,
+        fixtures.read(DEVELOPER).reportedDetail,
+        "a report with no detail clears the stale one, not keeps it");
+    as(operator).get(DEV).then().statusCode(200).body("reportedDetail", nullValue());
   }
 
   @Test
