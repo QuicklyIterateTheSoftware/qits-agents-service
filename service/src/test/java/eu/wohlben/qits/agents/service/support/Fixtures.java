@@ -169,6 +169,13 @@ public class Fixtures {
     return claim;
   }
 
+  /** Marks a released claim as released by its item's closure (qits-2718). */
+  @Transactional
+  public void releasedOn(UUID claimId, String status) {
+    AgentClaim claim = AgentClaim.findById(claimId);
+    claim.releasedOn = status;
+  }
+
   /** A turn in the agent's inbox; delivered when {@code deliveredAt} is given. */
   @Transactional
   public AgentTurn turn(

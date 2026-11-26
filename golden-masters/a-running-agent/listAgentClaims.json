@@ -7,6 +7,7 @@
     "claimedBy": "a-person",
     "claimedAt": "2026-01-01T00:00:00Z",
     "releasedAt": null,
-    "releasedBy": null
+    "releasedBy": null,
+    "releasedOn": null
   }
 ]

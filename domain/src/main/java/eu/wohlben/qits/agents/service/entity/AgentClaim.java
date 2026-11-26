@@ -12,8 +12,10 @@ import java.util.UUID;
 /**
  * A work item an agent holds ({@code agent_claim}): open while {@code released_at} is null. At most
  * one open claim per agent and item ({@code agent_claim_open_uq}), so a redelivered assignment is a
- * no-op. Written from qits-projects' {@code EntityAssigned} ({@code control.Assignments}); read
- * by the claims door and by {@code openClaims} on the agent list.
+ * no-op. Written from qits-projects' {@code EntityAssigned} ({@code control.Assignments}) and,
+ * since qits-2718, from its {@code EntityTransitioned} ({@code control.ClaimClosures}): a claim is
+ * released when its item closes and given back when the item reopens. Read by the claims door and
+ * by {@code openClaims} on the agent list.
  *
  * <p><b>Uncaused.</b> The claim carries who claimed and released it ({@code claimed_by}, {@code
  * released_by}), which is the record an operator reads.
@@ -51,4 +53,12 @@ public class AgentClaim extends PanacheEntityBase {
 
   @Column(name = "released_by", length = 256)
   public String releasedBy;
+
+  /**
+   * The closed status that released the claim (DONE, DROPPED, RESOLVED or OBSOLETE, qits-2718), or
+   * null when an assignee move released it. Only a claim released this way is given back when its
+   * item reopens.
+   */
+  @Column(name = "released_on", length = 16)
+  public String releasedOn;
 }

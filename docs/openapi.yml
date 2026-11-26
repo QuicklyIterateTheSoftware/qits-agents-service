@@ -91,6 +91,8 @@ components:
           $ref: "#/components/schemas/Instant"
         releasedBy:
           type: string
+        releasedOn:
+          type: string
     EvaluationDto:
       type: object
       properties:

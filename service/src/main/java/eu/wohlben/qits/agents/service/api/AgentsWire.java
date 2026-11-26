@@ -89,7 +89,10 @@ public final class AgentsWire {
     }
   }
 
-  /** A work item the agent holds, or held. */
+  /**
+   * A work item the agent holds, or held. {@code releasedOn} is the closed status that released it
+   * (qits-2718), absent when an assignee move did.
+   */
   public record ClaimDto(
       UUID entityId,
       String qualifiedId,
@@ -98,7 +101,8 @@ public final class AgentsWire {
       String claimedBy,
       Instant claimedAt,
       Instant releasedAt,
-      String releasedBy) {
+      String releasedBy,
+      String releasedOn) {
 
     static ClaimDto of(AgentClaim claim) {
       return new ClaimDto(
@@ -109,7 +113,8 @@ public final class AgentsWire {
           claim.claimedBy,
           claim.claimedAt,
           claim.releasedAt,
-          claim.releasedBy);
+          claim.releasedBy,
+          claim.releasedOn);
     }
   }
 

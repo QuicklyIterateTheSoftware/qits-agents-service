@@ -34,7 +34,7 @@ import org.junit.jupiter.api.Test;
  * shaped as qits-projects publishes them (plus a field this copy does not know). The listeners are
  * called directly, without the library's claim on the event, so a redelivery here proves the
  * appliers' own idempotency. qits-idp is {@link StubCredentials}: the Git refs an agent's token may
- * push follow its claims (qits-2705).
+ * push follow its claims (qits-2705), and the claims follow their items' status (qits-2718).
  */
 @QuarkusTest
 class ClaimsAndTurnsFromEventsTest {
@@ -50,6 +50,8 @@ class ClaimsAndTurnsFromEventsTest {
   @Inject AssignmentListener assignments;
 
   @Inject CommentListener comments;
+
+  @Inject ClaimClosureListener closures;
 
   @Inject Agents agents;
 
@@ -381,6 +383,223 @@ class ClaimsAndTurnsFromEventsTest {
     assertEquals(2, claims(DEVELOPER).size(), "both claims committed regardless");
     assertEquals(2, turns(DEVELOPER).size());
     assertTrue(idp.replaced.isEmpty(), "qits-idp took nothing; the reconcile states it later");
+  }
+
+  // --- EntityTransitioned: claims close with their items (qits-2718) -------------------------
+
+  /** One entity moved from {@code before} to {@code status} at {@code at}. */
+  static EventFrame transitioned(
+      UUID eventId,
+      UUID entityId,
+      String archetype,
+      int number,
+      String before,
+      String status,
+      Instant at) {
+    return transitioned(
+        eventId, at, List.of(entity(entityId, archetype, number, before, status)));
+  }
+
+  static Map<String, Object> entity(
+      UUID entityId, String archetype, int number, String before, String status) {
+    Map<String, Object> e = new LinkedHashMap<>();
+    e.put("entityId", entityId.toString());
+    e.put("projectId", Fixtures.PROJECT_ID.toString());
+    e.put("archetype", archetype);
+    e.put("parentId", null);
+    e.put("position", null);
+    e.put("slug", "qits-" + number);
+    e.put("title", "Work item qits-" + number);
+    e.put("status", status);
+    e.put("statusBefore", before);
+    e.put("changedBy", "qits-projects");
+    e.put("number", number);
+    e.put("aFieldFromTheFuture", true);
+    return e;
+  }
+
+  static EventFrame transitioned(UUID eventId, Instant at, List<Map<String, Object>> entities) {
+    Map<String, Object> p = new LinkedHashMap<>();
+    p.put("eventId", eventId.toString());
+    p.put("entities", entities);
+    p.put("transitionedAt", at.toString());
+    return new EventFrame(
+        eventId.toString(), "EntityTransitioned", at, CanonicalJson.canonicalize(p), null, null,
+        "dev");
+  }
+
+  private void assignTicket() {
+    assignments.onFrame(
+        assigned(UUID.randomUUID(), TICKET, "TICKET", 2705, "developer", null, "person-sub", "Ben"));
+  }
+
+  @Test
+  void aTicketReachingDoneReleasesItsClaimAndItsRefs() {
+    assignments.onFrame(assigned(UUID.randomUUID(), "developer", null, "person-sub", "Ben"));
+    assignTicket();
+    Instant done = AT.plusSeconds(600);
+
+    closures.onFrame(
+        transitioned(UUID.randomUUID(), TICKET, "TICKET", 2705, "VERIFIED", "DONE", done));
+
+    AgentClaim released =
+        claims(DEVELOPER).stream().filter(c -> c.entityId.equals(TICKET)).findFirst().orElseThrow();
+    assertEquals(done, released.releasedAt);
+    assertEquals("qits-projects", released.releasedBy);
+    assertEquals("DONE", released.releasedOn);
+    assertEquals(1, agents.openClaims(DEVELOPER), "the epic is still held");
+    assertEquals(
+        List.of("refs/heads/epic/qits-2518", "refs/heads/epic/qits-2518-*"),
+        idp.refsOf(DEVELOPER_TOKEN),
+        "the done ticket's branches leave the token at once");
+  }
+
+  @Test
+  void aDroppedItemReleasesItsClaim() {
+    assignTicket();
+    closures.onFrame(
+        transitioned(
+            UUID.randomUUID(), TICKET, "TICKET", 2705, "IMPLEMENTING", "DROPPED",
+            AT.plusSeconds(60)));
+
+    assertEquals("DROPPED", claims(DEVELOPER).get(0).releasedOn);
+    assertEquals(List.of(), idp.refsOf(DEVELOPER_TOKEN));
+  }
+
+  @Test
+  void aVerifiedTicketKeepsItsClaimAndItsRefs() {
+    assignTicket();
+    int replaces = idp.replaced.size();
+    closures.onFrame(
+        transitioned(
+            UUID.randomUUID(), TICKET, "TICKET", 2705, "VERIFYING", "VERIFIED", AT.plusSeconds(60)));
+
+    assertNull(claims(DEVELOPER).get(0).releasedAt, "its wrapper delivery still needs the refs");
+    assertEquals(replaces, idp.replaced.size(), "nothing moved, nothing replaced");
+    assertEquals(TICKET_REFS, idp.refsOf(DEVELOPER_TOKEN));
+  }
+
+  @Test
+  void anEpicClosedWithItsPiecesReleasesEveryClaimInTheBatch() {
+    assignments.onFrame(assigned(UUID.randomUUID(), "developer", null, "person-sub", "Ben"));
+    assignments.onFrame(
+        assigned(UUID.randomUUID(), TASK, "TASK", 2579, "reviewer", null, "person-sub", "Ben"));
+
+    closures.onFrame(
+        transitioned(
+            UUID.randomUUID(),
+            AT.plusSeconds(60),
+            List.of(
+                entity(EPIC, "EPIC", 2518, "IMPLEMENTING", "DONE"),
+                entity(TASK, "TASK", 2579, "IMPLEMENTING", "DONE"))));
+
+    assertEquals(0, agents.openClaims(DEVELOPER));
+    assertEquals(0, agents.openClaims(REVIEWER));
+    assertEquals(List.of(), idp.refsOf(DEVELOPER_TOKEN));
+  }
+
+  @Test
+  void aCloseOlderThanTheClaimReleasesNothing() {
+    assignTicket();
+    closures.onFrame(
+        transitioned(
+            UUID.randomUUID(), TICKET, "TICKET", 2705, "IMPLEMENTING", "DROPPED",
+            AT.minusSeconds(60)));
+
+    assertNull(claims(DEVELOPER).get(0).releasedAt, "a late catch-up cannot close a newer claim");
+  }
+
+  @Test
+  void aReopenedItemGivesTheClaimAndItsRefsBack() {
+    assignTicket();
+    Instant dropped = AT.plusSeconds(60);
+    Instant reopened = AT.plusSeconds(120);
+    closures.onFrame(
+        transitioned(UUID.randomUUID(), TICKET, "TICKET", 2705, "IMPLEMENTING", "DROPPED", dropped));
+    assertEquals(List.of(), idp.refsOf(DEVELOPER_TOKEN));
+
+    EventFrame reopen =
+        transitioned(UUID.randomUUID(), TICKET, "TICKET", 2705, "DROPPED", "REPORTED", reopened);
+    closures.onFrame(reopen);
+
+    List<AgentClaim> claims = claims(DEVELOPER);
+    assertEquals(2, claims.size(), "the closed claim stays in the history");
+    assertEquals(reopened, claims.get(0).claimedAt);
+    assertNull(claims.get(0).releasedAt);
+    assertEquals("qits-2705", claims.get(0).qualifiedId);
+    assertEquals("TICKET", claims.get(0).archetype);
+    assertEquals("qits-projects", claims.get(0).claimedBy);
+    assertEquals(TICKET_REFS, idp.refsOf(DEVELOPER_TOKEN));
+    assertEquals(1, turns(DEVELOPER).size(), "the reopen queues no turn");
+
+    closures.onFrame(reopen);
+    assertEquals(2, claims(DEVELOPER).size(), "a redelivered reopen changes nothing");
+  }
+
+  @Test
+  void aRedeliveredCloseChangesNothing() {
+    assignTicket();
+    EventFrame done =
+        transitioned(
+            UUID.randomUUID(), TICKET, "TICKET", 2705, "VERIFIED", "DONE", AT.plusSeconds(60));
+    closures.onFrame(done);
+    int replaces = idp.replaced.size();
+    closures.onFrame(done);
+
+    assertEquals(1, claims(DEVELOPER).size());
+    assertEquals(AT.plusSeconds(60), claims(DEVELOPER).get(0).releasedAt);
+    assertEquals(replaces, idp.replaced.size());
+  }
+
+  @Test
+  void anItemAssignedAwayWhileClosedIsNotGivenBackOnAReopen() {
+    assignTicket();
+    closures.onFrame(
+        transitioned(
+            UUID.randomUUID(), TICKET, "TICKET", 2705, "IMPLEMENTING", "DROPPED",
+            AT.plusSeconds(60)));
+    EventFrame cleared =
+        assigned(UUID.randomUUID(), TICKET, "TICKET", 2705, null, "developer", "person-sub", "Ben");
+    Instant later = AT.plusSeconds(120);
+    assignments.onFrame(
+        new EventFrame(
+            cleared.id(), cleared.name(), later,
+            cleared.payload().replace(AT.toString(), later.toString()), null, null, "dev"));
+
+    closures.onFrame(
+        transitioned(
+            UUID.randomUUID(), TICKET, "TICKET", 2705, "DROPPED", "REPORTED", AT.plusSeconds(180)));
+
+    assertEquals(1, claims(DEVELOPER).size());
+    assertEquals(0, agents.openClaims(DEVELOPER));
+    assertNull(claims(DEVELOPER).get(0).releasedOn);
+  }
+
+  @Test
+  void aClosureWithQitsIdpDownStillConsumesTheEvent() {
+    assignTicket();
+    idp.replaceThrows = true;
+    QuarkusTransaction.requiringNew()
+        .run(
+            () -> {
+              enlistEventstream();
+              closures.onFrame(
+                  transitioned(
+                      UUID.randomUUID(), TICKET, "TICKET", 2705, "VERIFIED", "DONE",
+                      AT.plusSeconds(60)));
+            });
+
+    assertEquals("DONE", claims(DEVELOPER).get(0).releasedOn, "the release committed regardless");
+  }
+
+  @Test
+  void anUnreadableTransitionIsSettledUnhandled() {
+    assignTicket();
+    closures.onFrame(
+        new EventFrame(
+            UUID.randomUUID().toString(), "EntityTransitioned", AT, "not json", null, null, "dev"));
+
+    assertEquals(1, agents.openClaims(DEVELOPER));
   }
 
   // --- EntityCommented -------------------------------------------------------------------------

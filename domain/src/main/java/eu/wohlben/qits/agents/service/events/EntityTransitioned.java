@@ -9,7 +9,9 @@ import java.util.UUID;
 /**
  * <b>Consumed, not published</b>: this service's copy of qits-projects' {@code EntityTransitioned}, read off the
  * durable consumption {@code eval-transitions} ({@code bus/EvalTransitionsListener}) into the evaluation ledger
- * (epic qits-2521). One or more entities moved; each entry is the entity's post-state.
+ * (epic qits-2521), and off {@code agents-claim-closures} ({@code bus/ClaimClosureListener}) into the
+ * claims, which close with their items (qits-2718). One or more entities moved; each entry is the
+ * entity's post-state.
  *
  * <p>Bound by name and lenient to fields this copy does not know; a field the producer leaves out
  * binds as null. It is deliberately not a {@code QitsEvent}: nothing here publishes it.

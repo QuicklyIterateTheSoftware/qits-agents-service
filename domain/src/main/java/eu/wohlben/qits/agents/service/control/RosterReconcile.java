@@ -40,6 +40,12 @@ import org.jboss.logging.Logger;
  * stored about it: qits-idp's replace is idempotent, and a run every ten minutes asks it once per
  * agent. A refused replace makes the run incomplete.
  *
+ * <p><b>Claims of closed items</b> (qits-2718): before the refs are stated, {@link
+ * ClaimClosures#settle} releases every open claim whose item the evaluation ledger last saw closed,
+ * and gives back one a closure released whose item it last saw reopened — the backfill for claims
+ * older than the closure listener, and the net for an event it missed. The replace that follows
+ * then narrows or widens the token in the same run.
+ *
  * <p><b>Idempotent</b>: a second run over the same rosters writes nothing at all. That is what lets
  * {@code RosterReconcileTrigger} re-run it periodically, healing a boot that could not reach
  * qits-projects or qits-idp. {@code qits.agents.roster-reconcile-at-boot} turns the boot run off
@@ -58,6 +64,8 @@ public class RosterReconcile {
   @Inject AgentCredentials credentials;
 
   @Inject GitRefSync gitRefs;
+
+  @Inject ClaimClosures closures;
 
   @ConfigProperty(name = "qits.agents.roster-reconcile-at-boot")
   boolean atBoot;
@@ -166,6 +174,17 @@ public class RosterReconcile {
       } else {
         complete = false;
       }
+    }
+    // Claims on items that closed or reopened since (qits-2718), before the refs are stated.
+    try {
+      int settled = closures.settle(projectId);
+      if (settled > 0) {
+        LOG.infof("project %s: %d claims follow their items' status", slug, settled);
+      }
+    } catch (RuntimeException failed) {
+      LOG.warnf(
+          failed, "project %s: the claims of closed items are not settled; the next run retries", slug);
+      complete = false;
     }
     // A token commissioned above already states its refs.
     complete &=
