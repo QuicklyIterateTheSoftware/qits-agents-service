@@ -50,7 +50,7 @@
              which the reconcile loads by ServiceLoader. The roster is a compile-scope dependency: a
              roster release is a release of this service (the restart of an agent rides it). -->
         <qits.agents-contract.version>2026.1122.201825</qits.agents-contract.version>
-        <qits.agents-roster.version>2026.1125.33811</qits.agents-roster.version>
+        <qits.agents-roster.version>2026.1125.231834</qits.agents-roster.version>
         <!-- The datasource resilience pair (PatientPgDriver/DbRetry, and the rule that checks the
              block). They move together: the rule names the driver as a string. -->
         <qits.db-core.version>2026.1107.191249</qits.db-core.version>
