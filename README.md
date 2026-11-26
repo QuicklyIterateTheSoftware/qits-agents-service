@@ -137,7 +137,7 @@ spec naming one.
 
 | Door | Answer | Roles |
 |---|---|---|
-| `GET /projects/{project}/agents` | the agents by name: `name, description, generation, desiredState, reportedState, reportedGeneration, sessionId, reportedAt, declarationHash, tokenSubject, openClaims` | read |
+| `GET /projects/{project}/agents` | the agents by name: `name, description, generation, desiredState, reportedState, reportedGeneration, sessionId, reportedAt, reportedDetail, declarationHash, tokenSubject, openClaims` | read |
 | `GET /projects/{project}/agents/{name}` | one agent, plus `brief, recoveryPrompt, model, effort`; 404 unknown | read |
 | `GET …/{name}/claims?state=open\|all` | the claims, newest first; `open` by default; 400 any other state | read |
 | `GET …/{name}/turns?pending=true\|false` | the turns, oldest first; pending by default | runner |
