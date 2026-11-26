@@ -29,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -386,10 +387,15 @@ public class Evaluation {
 
     Instant end = until.isAfter(now) ? now : until;
     double days = Duration.between(since, until).getSeconds() / 86400.0;
+    Set<String> listed =
+        items.stream()
+            .map(i -> i.row().qualifiedId)
+            .filter(java.util.Objects::nonNull)
+            .collect(Collectors.toSet());
     List<ModelFigures> models = new ArrayList<>();
     for (String model : List.of(WORKSPACE, PROJECT_AGENT)) {
       List<Item> mine = items.stream().filter(i -> i.model().equals(model)).toList();
-      models.add(figures(model, mine, rows, since, until, end, days));
+      models.add(figures(model, mine, listed, rows, since, until, end, days));
     }
     List<String> doubleWorked =
         items.stream().filter(i -> i.model().equals(BOTH)).map(i -> i.row().qualifiedId).toList();
@@ -397,9 +403,14 @@ public class Evaluation {
     return new Report(slug, since, until, models, doubleWorked, itemFigures);
   }
 
+  /**
+   * @param listed the qualified ids of every item the report lists, of any model: a project
+   *     agent's message naming none of them (an item it only researched, or one not evaluated) is
+   *     its overhead, never dropped (qits-2722)
+   */
   private static ModelFigures figures(
-      String model, List<Item> items, Ledger rows, Instant since, Instant until, Instant end,
-      double days) {
+      String model, List<Item> items, Set<String> listed, Ledger rows, Instant since,
+      Instant until, Instant end, double days) {
     List<Item> verified = items.stream().filter(i -> i.verifiedAt() != null).toList();
     List<Long> leads =
         verified.stream().map(i -> seconds(i.takenAt(), i.verifiedAt())).toList();
@@ -414,7 +425,8 @@ public class Evaluation {
     Map<String, long[]> overhead = new TreeMap<>();
     if (PROJECT_AGENT.equals(model)) {
       for (EvalUsageMessage m : rows.messages()) {
-        if (m.workQualifiedId == null && within(m.at, since, until)) {
+        if ((m.workQualifiedId == null || !listed.contains(m.workQualifiedId))
+            && within(m.at, since, until)) {
           add(overhead, m.claudeModel, 1, m.inputTokens, m.outputTokens, m.cacheCreationTokens, m.cacheReadTokens);
         }
       }

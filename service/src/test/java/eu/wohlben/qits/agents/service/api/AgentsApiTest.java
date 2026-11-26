@@ -290,6 +290,52 @@ class AgentsApiTest {
   }
 
   @Test
+  void aResendNamingAnItemReAttributesTheMessageAndANullNeverClearsIt() {
+    // qits-2722: an old daemon recorded a subagent's message with no item; the next one's rescan
+    // resends it attributed, and that must not be discarded.
+    as(self)
+        .contentType(ContentType.JSON)
+        .body(
+            Map.of(
+                "sessionId",
+                "session-7",
+                "messages",
+                List.of(message("msg_1", null, 10), message("msg_2", "qits-2511", 20))))
+        .post(DEV + "/usage")
+        .then()
+        .statusCode(204);
+    as(self)
+        .contentType(ContentType.JSON)
+        .body(
+            Map.of(
+                "sessionId",
+                "session-7",
+                "messages",
+                List.of(message("msg_1", "qits-2565", 99), message("msg_2", "qits-2542", 98))))
+        .post(DEV + "/usage")
+        .then()
+        .statusCode(204);
+    as(self)
+        .contentType(ContentType.JSON)
+        .body(
+            Map.of(
+                "sessionId",
+                "session-7",
+                "messages",
+                List.of(message("msg_1", null, 97), message("msg_2", null, 96))))
+        .post(DEV + "/usage")
+        .then()
+        .statusCode(204);
+
+    var recorded = fixtures.usageMessages();
+    assertEquals(List.of("msg_1", "msg_2"), recorded.stream().map(m -> m.messageId).toList());
+    assertEquals("qits-2565", recorded.get(0).workQualifiedId, "filled in, then kept");
+    assertEquals("qits-2542", recorded.get(1).workQualifiedId, "moved, then kept");
+    assertEquals(10, recorded.get(0).inputTokens, "the tokens are never rewritten");
+    assertEquals(20, recorded.get(1).inputTokens);
+  }
+
+  @Test
   void usageIsRefusedWithoutSessionOrBeyond500Messages() {
     as(self)
         .contentType(ContentType.JSON)
