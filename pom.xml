@@ -86,7 +86,7 @@
              runtime/AgentSpecs puts in every AGENT lease. ONE PROPERTY REFERENCE, so qits-
              maintenance's bump train can move it; pinned here by hand once (a first adoption gets no
              bump), the train's afterwards. -->
-        <qits.agents-daemon-protocol.version>2026.1126.53532</qits.agents-daemon-protocol.version>
+        <qits.agents-daemon-protocol.version>2026.1126.123658</qits.agents-daemon-protocol.version>
         <qits.maven.repository.url>https://registry.qits.wohlben.eu/artifacts/maven/maven</qits.maven.repository.url>
         <!-- Real PostgreSQL binaries as a maven dependency, spawned by the suite: a clone tests
              green with NO DOCKER, so no Testcontainers and no dev services. -->
