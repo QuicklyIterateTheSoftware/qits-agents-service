@@ -6,7 +6,7 @@
     <parent>
         <groupId>eu.wohlben.qits</groupId>
         <artifactId>qits-agents</artifactId>
-        <version>2026.1126.83336</version>
+        <version>2026.1126.91802</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <!-- The deployable: the REST surface under /agents/api, the roster reconcile's triggers, and the
