@@ -12,6 +12,7 @@ import eu.wohlben.qits.agents.contract.AgentDeclaration;
 import eu.wohlben.qits.agents.contract.AgentRoster;
 import eu.wohlben.qits.agents.contract.AgentRosterDocument;
 import eu.wohlben.qits.agents.contract.InvalidAgentRosterException;
+import eu.wohlben.qits.agents.service.entity.AgentClaim;
 import eu.wohlben.qits.agents.service.entity.AgentTurn;
 import eu.wohlben.qits.agents.service.entity.DesiredState;
 import eu.wohlben.qits.agents.service.entity.ProjectAgent;
@@ -19,6 +20,7 @@ import eu.wohlben.qits.agents.service.entity.ReportedState;
 import eu.wohlben.qits.agents.service.entity.TurnKind;
 import eu.wohlben.qits.agents.service.events.ProjectAgentChanged;
 import eu.wohlben.qits.agents.service.support.Fixtures;
+import eu.wohlben.qits.agents.service.support.LedgerRows;
 import eu.wohlben.qits.agents.service.support.StubCredentials;
 import eu.wohlben.qits.agents.service.support.StubDirectory;
 import eu.wohlben.qits.eventstream.QitsEvent;
@@ -35,7 +37,8 @@ import org.junit.jupiter.api.Test;
  * qits-projects and qits-idp: first sight, an unchanged roster (no write at all), a changed
  * declaration (a generation and a RECOVERY turn), a removed agent (RETIRED, token revoked), one
  * declared again, an unknown project, an unreachable one, and a broken roster; and the Git refs
- * each token may push, stated at commission and replaced by every run (qits-2705).
+ * each token may push, stated at commission and replaced by every run (qits-2705), after the claims
+ * of items the evaluation ledger saw closed or reopened are settled (qits-2718).
  */
 @QuarkusTest
 class RosterReconcileTest {
@@ -62,6 +65,8 @@ class RosterReconcileTest {
   @Inject RosterReconcile reconcile;
 
   @Inject Fixtures fixtures;
+
+  @Inject Agents agents;
 
   List<QitsEvent> events;
 
@@ -212,6 +217,96 @@ class RosterReconcileTest {
     assertEquals(List.of(reviewerToken), idp.revoked);
     assertNull(idp.refsOf(reviewerToken), "a retired agent's token is revoked, not rescoped");
     assertNotNull(idp.refsOf(row("developer").tokenId));
+  }
+
+
+  // --- claims of closed items (qits-2718) -----------------------------------------------------
+
+  @Test
+  void aRunReleasesTheClaimOfAnItemTheLedgerSawDoneAndNarrowsTheToken() {
+    reconcile.reconcile(List.of(qits(DEVELOPER)));
+    ProjectAgent developer = row("developer");
+    fixtures.claim(developer.id, LedgerRows.work("qits-2392"), "qits-2392", "TICKET", CLAIMED, null);
+    fixtures.claim(developer.id, LedgerRows.work("qits-2565"), "qits-2565", "TICKET", CLAIMED, null);
+    fixtures.claim(developer.id, LedgerRows.work("qits-2542"), "qits-2542", "EPIC", CLAIMED, null);
+    Instant done = CLAIMED.plusSeconds(1200);
+    fixtures.persist(
+        LedgerRows.transition("qits-2392", "VERIFIED", CLAIMED.plusSeconds(600)),
+        LedgerRows.transition("qits-2392", "DONE", done),
+        LedgerRows.transition("qits-2565", "VERIFYING", done),
+        LedgerRows.transition("qits-2542", "IMPLEMENTING", done));
+
+    assertTrue(reconcile.reconcile(List.of(qits(DEVELOPER))).complete());
+
+    AgentClaim released =
+        agents.claims(developer.id, true).stream()
+            .filter(c -> c.qualifiedId.equals("qits-2392"))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(done, released.releasedAt);
+    assertEquals("DONE", released.releasedOn);
+    assertEquals(ClaimClosures.RECONCILE, released.releasedBy);
+    assertEquals(
+        List.of(
+            "refs/heads/epic/qits-2542",
+            "refs/heads/epic/qits-2542-*",
+            "refs/heads/ticket/qits-2565",
+            "refs/heads/ticket/qits-2565-*"),
+        idp.refsOf(developer.tokenId),
+        "the done ticket leaves the token; the open items stay");
+
+    int replaces = idp.replaced.size();
+    List<AgentClaim> before = agents.claims(developer.id, true);
+    reconcile.reconcile(List.of(qits(DEVELOPER)));
+    assertEquals(
+        before.stream().map(c -> c.id + "/" + c.releasedAt + "/" + c.releasedOn).sorted().toList(),
+        agents.claims(developer.id, true).stream()
+            .map(c -> c.id + "/" + c.releasedAt + "/" + c.releasedOn)
+            .sorted()
+            .toList(),
+        "a second run writes nothing");
+    assertEquals(idp.refsOf(developer.tokenId), idp.replaced.get(replaces).gitRefs());
+  }
+
+  @Test
+  void aRunGivesBackTheClaimOfAnItemTheLedgerSawReopened() {
+    reconcile.reconcile(List.of(qits(DEVELOPER)));
+    ProjectAgent developer = row("developer");
+    Instant dropped = CLAIMED.plusSeconds(600);
+    AgentClaim closed =
+        fixtures.claim(
+            developer.id, LedgerRows.work("qits-2700"), "qits-2700", "TICKET", CLAIMED, dropped);
+    fixtures.releasedOn(closed.id, "DROPPED");
+    fixtures.persist(
+        LedgerRows.transition("qits-2700", "DROPPED", dropped),
+        LedgerRows.transition("qits-2700", "REPORTED", dropped.plusSeconds(60)));
+
+    reconcile.reconcile(List.of(qits(DEVELOPER)));
+
+    List<AgentClaim> claims = agents.claims(developer.id, true);
+    assertEquals(2, claims.size());
+    assertEquals(1, claims.stream().filter(c -> c.releasedAt == null).count());
+    assertEquals(
+        List.of("refs/heads/ticket/qits-2700", "refs/heads/ticket/qits-2700-*"),
+        idp.refsOf(developer.tokenId));
+
+    reconcile.reconcile(List.of(qits(DEVELOPER)));
+    assertEquals(2, agents.claims(developer.id, true).size(), "given back once");
+  }
+
+  @Test
+  void aClaimTakenAfterItsItemClosedIsLeft() {
+    reconcile.reconcile(List.of(qits(DEVELOPER)));
+    ProjectAgent developer = row("developer");
+    fixtures.claim(developer.id, LedgerRows.work("qits-2701"), "qits-2701", "TICKET", CLAIMED, null);
+    fixtures.persist(LedgerRows.transition("qits-2701", "DROPPED", CLAIMED.minusSeconds(60)));
+
+    reconcile.reconcile(List.of(qits(DEVELOPER)));
+
+    assertEquals(
+        1,
+        agents.claims(developer.id, true).stream().filter(c -> c.releasedAt == null).count(),
+        "an assignment made while the item was closed is someone's deliberate act");
   }
 
   @Test

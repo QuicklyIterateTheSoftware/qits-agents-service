@@ -43,6 +43,7 @@ erDiagram
     string qualified_id "not null, length 64"
     instant released_at
     string released_by "length 256"
+    string released_on "length 16"
     text title "not null"
   }
   %% agent_turn: eu.wohlben.qits.agents.service.entity.AgentTurn (domain)

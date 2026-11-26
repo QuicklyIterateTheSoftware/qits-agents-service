@@ -17,7 +17,8 @@ qits-maintenance's bumps — never by hand.
 ## Layout
 
 - `domain/` — entities (`entity`), the agent reads and writes, the roster reconcile and the
-  claims and turns from qits-projects' events (`control`: `Assignments`, `CommentNotices`), the
+  claims and turns from qits-projects' events (`control`: `Assignments`, `CommentNotices`, and
+  `ClaimClosures`, which closes a claim with its item and gives it back on a reopen, qits-2718), the
   published event and the consumer copies of `EntityAssigned` and `EntityCommented` (`events`).
   Owns the `agents` datasource, persistence unit and the Flyway lineage at `db/agents/migration`
   (schema `agents`). `control/ProjectDirectory` and
@@ -40,7 +41,7 @@ qits-maintenance's bumps — never by hand.
   No payload field may be called `name` (it is `QitsEvent.name()`): the agent's is `agentName`.
 - **The listeners are thin**: decode with `CanonicalJson.payloadTo`, hand to `control`, WARN and
   return on a payload that will not bind (poison), let a database failure throw (the event stays
-  owed). Their `consumerId`s (`agents-assignments`, `agents-comments`) are storage keys: never
+  owed). Their `consumerId`s (`agents-assignments`, `agents-comments`, `agents-claim-closures`) are storage keys: never
   rename them. Every listener is passed to `EventstreamPactTest`, every consumed record is listed in
   `api/ApiWireReflection`. The evaluation ledger's `eval-*` consumptions (qits-2521, `bus/Eval*Listener`
   over `control/EvaluationLedger`) are the exception to "consume from now": they replay from the

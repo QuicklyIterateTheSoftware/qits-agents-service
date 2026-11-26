@@ -1,6 +1,7 @@
 package eu.wohlben.qits.agents.service;
 
 import eu.wohlben.qits.agents.service.bus.AssignmentListener;
+import eu.wohlben.qits.agents.service.bus.ClaimClosureListener;
 import eu.wohlben.qits.agents.service.bus.CommentListener;
 import eu.wohlben.qits.agents.service.bus.EvalActivityListener;
 import eu.wohlben.qits.agents.service.bus.EvalAssignmentsListener;
@@ -24,7 +25,7 @@ import org.junit.jupiter.api.TestFactory;
 /**
  * <b>What qits-eventstream asks qits-events on this service's behalf</b>: the outbox publish of
  * ProjectAgentChanged ({@code control.Agents}) and the catch-up paging of the durable listeners
- * ({@code bus.AssignmentListener}, {@code bus.CommentListener}, {@code bus.WaitClosedListener} and
+ * ({@code bus.AssignmentListener}, {@code bus.CommentListener}, {@code bus.WaitClosedListener}, {@code bus.ClaimClosureListener} and
  * the evaluation ledger's eleven {@code bus.Eval*Listener}s, qits-2521), pacted against the library version this repository pins and committed
  * as {@code pacts/qits-agents-service_qits-eventstream-javalib_qits-events-service.json}. The
  * guard fails naming any listener or {@code QitsEventBus} user in either module's classes left out
@@ -38,6 +39,7 @@ class EventstreamPactTest {
               new AssignmentListener(),
               new CommentListener(),
               new WaitClosedListener(),
+              new ClaimClosureListener(),
               new EvalTransitionsListener(),
               new EvalAssignmentsListener(),
               new EvalBlocksListener(),

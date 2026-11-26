@@ -21,6 +21,9 @@ import org.jboss.logging.Logger;
  * <b>Claims from qits-projects' {@code EntityAssigned}</b> (design decision 5): the assignee of an
  * item moved onto an agent, off one, or both.
  *
+ * <p>An assignee move is not the only release: a claim is also released when its item closes, and
+ * given back when it reopens ({@link ClaimClosures}, qits-2718).
+ *
  * <p>An agent of the event's project <em>matches</em> a value when it equals the agent's name or
  * its token subject (the alias an agent's own credential may write). When the previous assignee
  * matches agent A and the new one does not, A's open claim on the item is released. When the new
@@ -110,6 +113,7 @@ public class Assignments {
                 "agentId = ?1 and entityId = ?2 and releasedAt is null", agent.id, entityId)
             .firstResult();
     if (open == null) {
+      forgetClosure(agent, entityId, at);
       return false;
     }
     open.releasedAt = at;
@@ -117,6 +121,27 @@ public class Assignments {
     LOG.infof(
         "agent %s/%s released %s (%s)", agent.projectSlug, agent.name, open.qualifiedId, by);
     return true;
+  }
+
+  /**
+   * The assignee moved off the agent while its item was closed (qits-2718): the claim the closure
+   * released is no longer the agent's to be given back when the item reopens ({@link
+   * ClaimClosures}). Only a move after that release counts, so a late redelivery forgets nothing.
+   */
+  private static void forgetClosure(ProjectAgent agent, UUID entityId, Instant at) {
+    AgentClaim last =
+        AgentClaim.<AgentClaim>find(
+                "agentId = ?1 and entityId = ?2 order by claimedAt desc, id", agent.id, entityId)
+            .firstResult();
+    if (last != null
+        && last.releasedOn != null
+        && last.releasedAt != null
+        && last.releasedAt.isBefore(at)) {
+      last.releasedOn = null;
+      LOG.infof(
+          "agent %s/%s no longer gets %s back on a reopen: it was assigned away while closed",
+          agent.projectSlug, agent.name, last.qualifiedId);
+    }
   }
 
   /** Opens the agent's claim on the item (and its turn); true when a claim was opened. */
