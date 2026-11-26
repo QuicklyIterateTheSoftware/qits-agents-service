@@ -60,7 +60,8 @@ class ApiWireReflectionTest {
             AgentActivityChanged.class,
             AgentHarnessExited.class,
             AgentWaitClosed.class,
-            AgentUsageRecorded.class)) {
+            AgentUsageRecorded.class,
+            ProjectAgentChanged.class)) {
       assertTrue(
           registered.contains(consumed),
           "the consumed " + consumed.getSimpleName() + " is registered");

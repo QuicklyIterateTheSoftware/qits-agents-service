@@ -13,7 +13,7 @@ import java.util.UUID;
 /**
  * One state an agent entered ({@code eval_activity}): a workspace agent's {@code
  * AgentActivityChanged} (model WORKSPACE, subject the agent's id), or a project agent's reported
- * state as {@code control.Agents} publishes it (model PROJECT_AGENT, subject the agent's name). The
+ * state off its {@code ProjectAgentChanged} (model PROJECT_AGENT, subject the agent's name). The
  * report reads consecutive rows of one subject as intervals.
  *
  * <p><b>Technical, uncaused.</b> A raw fact of the evaluation ledger (V4, epic qits-2521): no door

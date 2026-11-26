@@ -50,9 +50,6 @@ public class Agents {
    */
   @Inject Event<ProjectAgentChanged> inProcess;
 
-  /** The evaluation ledger (qits-2521): the reported state, as the agent's busy/idle/down record. */
-  @Inject EvaluationLedger ledger;
-
   // --- reads -----------------------------------------------------------------------------------
 
   /** Every agent the runtime should keep running, by project slug and name. */
@@ -356,9 +353,9 @@ public class Agents {
   // --- the one publisher -----------------------------------------------------------------------
 
   /**
-   * Publishes the row's state, after its flush, in the caller's transaction — and records it in the
-   * evaluation ledger (qits-2521) in the same one: the report reads consecutive states of one agent
-   * as its intervals, so a publish that repeats the state is merged there, not here.
+   * Publishes the row's state, after its flush, in the caller's transaction. The evaluation ledger
+   * (qits-2521) records it off the bus ({@code bus/EvalProjectAgentsListener}), not here, so the
+   * window before a deploy is replayed the way every other consumption's is.
    */
   private void changed(ProjectAgent agent, Instant at) {
     ProjectAgent.flush();
@@ -375,8 +372,6 @@ public class Agents {
             at,
             at);
     bus.publish(event);
-    ledger.projectAgentState(
-        event.eventId(), agent.projectId, agent.name, agent.reportedState.name(), at);
     inProcess.fire(event);
   }
 

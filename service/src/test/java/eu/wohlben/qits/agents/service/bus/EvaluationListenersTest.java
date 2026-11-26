@@ -17,8 +17,10 @@ import eu.wohlben.qits.agents.service.entity.EvalTransition;
 import eu.wohlben.qits.agents.service.entity.EvalUsage;
 import eu.wohlben.qits.agents.service.entity.EvalWait;
 import eu.wohlben.qits.agents.service.entity.ReportedState;
+import eu.wohlben.qits.agents.service.events.ProjectAgentChanged;
 import eu.wohlben.qits.agents.service.support.Fixtures;
 import eu.wohlben.qits.eventstream.QitsDurableEventListener;
+import eu.wohlben.qits.eventstream.QitsEvent;
 import eu.wohlben.qits.eventstream.control.CanonicalJson;
 import eu.wohlben.qits.eventstream.control.EventFrame;
 import io.agroal.api.AgroalDataSource;
@@ -76,6 +78,8 @@ class EvaluationListenersTest {
 
   @Inject EvalUsageListener usage;
 
+  @Inject EvalProjectAgentsListener projectAgents;
+
   @Inject Agents agents;
 
   @Inject Fixtures fixtures;
@@ -84,10 +88,12 @@ class EvaluationListenersTest {
   @DataSource("eventstream")
   AgroalDataSource eventstream;
 
+  List<QitsEvent> events;
+
   @BeforeEach
   void arrange() {
     fixtures.clear();
-    Fixtures.recordEvents();
+    events = Fixtures.recordEvents();
     fixtures.agent(DEVELOPER, "developer", 1);
   }
 
@@ -171,12 +177,13 @@ class EvaluationListenersTest {
   void everyConsumptionReplaysFromTheEpochUnderItsOwnId() {
     List<QitsDurableEventListener> all =
         List.of(transitions, assignments, blocks, requests, builds, placements, activity, exits,
-            waits, usage);
+            waits, usage, projectAgents);
     assertTrue(all.stream().allMatch(QitsDurableEventListener::replayFromEpoch));
     assertEquals(
         List.of(
             "eval-transitions", "eval-assignments", "eval-blocks", "eval-requests", "eval-builds",
-            "eval-placements", "eval-activity", "eval-exits", "eval-waits", "eval-usage"),
+            "eval-placements", "eval-activity", "eval-exits", "eval-waits", "eval-usage",
+            "eval-project-agents"),
         all.stream().map(QitsDurableEventListener::consumerId).toList());
   }
 
@@ -392,11 +399,29 @@ class EvaluationListenersTest {
     assertEquals(40, usages.get(0).cacheReadTokens);
   }
 
+  static EventFrame projectAgentChanged(String reportedState, Instant at) {
+    return frame(
+        "ProjectAgentChanged",
+        at,
+        payload(
+            "projectId", Fixtures.PROJECT_ID.toString(),
+            "projectSlug", "qits",
+            "agentName", "developer",
+            "generation", 1,
+            "desiredState", "RUNNING",
+            "reportedState", reportedState,
+            "declarationHash", "sha256:abc",
+            "changedAt", at.toString(),
+            "occurredAt", at.toString()));
+  }
+
   @Test
-  void aProjectAgentsReportedStateIsRecordedWhereItIsPublished() {
-    agents.report(DEVELOPER, 1, ReportedState.BUSY, "session-1", null);
-    agents.report(DEVELOPER, 1, ReportedState.BUSY, "session-1", null); // no move, no row
-    agents.report(DEVELOPER, 1, ReportedState.EXITED, "session-1", "crashed");
+  void aProjectAgentsReportedStateIsRecordedOffItsChangeOncePerEvent() {
+    EventFrame busy = projectAgentChanged("BUSY", AT);
+    projectAgents.onFrame(busy);
+    projectAgents.onFrame(busy); // redelivered
+    projectAgents.onFrame(projectAgentChanged("EXITED", AT.plusSeconds(60)));
+    projectAgents.onFrame(projectAgentChanged("IDLE", BEFORE)); // before the window
 
     List<EvalActivity> states =
         rows(EvalActivity.class).stream().sorted(Comparator.comparing(a -> a.at)).toList();
@@ -404,6 +429,16 @@ class EvaluationListenersTest {
     assertEquals("PROJECT_AGENT", states.get(0).model);
     assertEquals("developer", states.get(0).subject);
     assertEquals(Fixtures.PROJECT_ID, states.get(0).projectId);
+    assertEquals(AT, states.get(0).at);
+    assertNull(states.get(0).workId);
+  }
+
+  @Test
+  void aReportPublishesTheChangeAndWritesNoLedgerRowItself() {
+    agents.report(DEVELOPER, 1, ReportedState.BUSY, "session-1", null);
+
+    assertEquals(1, Fixtures.of(events, ProjectAgentChanged.class).size());
+    assertEquals(List.of(), rows(EvalActivity.class), "the ledger is written off the bus only");
   }
 
   /** As qits-eventstream really calls a listener: inside its claiming transaction (see AGENTS.md). */

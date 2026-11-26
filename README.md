@@ -197,11 +197,12 @@ changed definition needs a code change and no re-collection. Its writers (`contr
 | `eval-exits` | `AgentHarnessExited` (workspaces) | `eval_exit` when `stoppedBy` is SELF or KILLED |
 | `eval-waits` | `AgentWaitClosed`, `ProjectAgentWaitClosed` (workspaces) | `eval_wait` |
 | `eval-usage` | `AgentUsageRecorded` (workspaces) | `eval_usage` |
+| `eval-project-agents` | `ProjectAgentChanged` (this service's own) | `eval_activity`, model PROJECT_AGENT |
 
 Every one replays from the epoch (the backfill) and settles an event older than
-`qits.agents.evaluation.since` without a write. The project agent's own state is not consumed:
-`control/Agents.changed` writes an `eval_activity` row (model PROJECT_AGENT) beside
-`ProjectAgentChanged`, and its usage arrives through `POST …/usage` into `eval_usage_message`.
+`qits.agents.evaluation.since` without a write. The project agent's own state is consumed off the
+bus too (`eval-project-agents`, one row per `ProjectAgentChanged`), so the window before a deploy is
+replayed like the rest; its usage arrives through `POST …/usage` into `eval_usage_message`.
 
 **The rules** the door applies (see `control/Evaluation`): an EPIC or TICKET is WORKSPACE's when
 placed, PROJECT_AGENT's when assigned to a roster agent, at or after `since`; both is BOTH,

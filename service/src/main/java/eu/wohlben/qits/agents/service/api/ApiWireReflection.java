@@ -66,6 +66,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
       AgentHarnessExited.class,
       AgentWaitClosed.class,
       AgentUsageRecorded.class,
+      // ProjectAgentChanged, above, is consumed too (bus/EvalProjectAgentsListener).
       // qits-eventstream serializes with its own ObjectMapper, so nothing registers its PUT body or
       // the frames it reads for us: without these the native image publishes nothing, silently.
       EventEnvelope.class,

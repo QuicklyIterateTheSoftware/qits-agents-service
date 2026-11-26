@@ -11,6 +11,7 @@ import eu.wohlben.qits.agents.service.events.BuildStatusChanged;
 import eu.wohlben.qits.agents.service.events.EntityAssigned;
 import eu.wohlben.qits.agents.service.events.EntityBlockChanged;
 import eu.wohlben.qits.agents.service.events.EntityTransitioned;
+import eu.wohlben.qits.agents.service.events.ProjectAgentChanged;
 import eu.wohlben.qits.agents.service.events.ProjectAgentWaitClosed;
 import eu.wohlben.qits.agents.service.events.ReleaseRequestStateChanged;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -124,23 +125,29 @@ public class EvaluationLedger {
   }
 
   /**
-   * A project agent's reported state, written by {@code Agents.changed} in the row's transaction
-   * beside {@code ProjectAgentChanged} ({@code REQUIRED}: it joins). The report reads consecutive
+   * A project agent's reported state, from this service's own {@code ProjectAgentChanged} (the
+   * {@code eval-project-agents} consumption), keyed by the event's id. The report reads consecutive
    * rows of one agent as its busy, idle and down intervals, and an entry into EXITED or FAILED as a
-   * session exit.
+   * session exit; a change that moved only the generation or the desired state repeats the reported
+   * one, and the report merges it.
    */
-  @Transactional
-  public void projectAgentState(
-      UUID eventId, UUID projectId, String agentName, String reportedState, Instant at) {
+  @Transactional(Transactional.TxType.REQUIRES_NEW)
+  public void projectAgentChanged(UUID eventId, ProjectAgentChanged event, Instant occurredAt) {
+    Instant at = micros(first(event.changedAt(), first(event.occurredAt(), occurredAt)));
+    if (before(at)
+        || blankToNull(event.agentName()) == null
+        || blankToNull(event.reportedState()) == null) {
+      return;
+    }
     sql("insert into {h-schema}eval_activity (source_event_id, model, project_id, subject, work_id,"
             + " state, at) values (?1, ?2, ?3, ?4, null, ?5, ?6)"
             + " on conflict (source_event_id) do nothing",
         eventId,
         PROJECT_AGENT,
-        nullable(projectId),
-        agentName,
-        reportedState,
-        micros(at));
+        nullable(event.projectId()),
+        event.agentName(),
+        event.reportedState(),
+        at);
   }
 
   // --- qits-projects --------------------------------------------------------------------------
