@@ -3,12 +3,14 @@ package eu.wohlben.qits.agents.service.bus;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import eu.wohlben.qits.agents.service.control.Agents;
 import eu.wohlben.qits.agents.service.entity.AgentClaim;
 import eu.wohlben.qits.agents.service.entity.AgentTurn;
 import eu.wohlben.qits.agents.service.entity.TurnKind;
 import eu.wohlben.qits.agents.service.support.Fixtures;
+import eu.wohlben.qits.agents.service.support.StubCredentials;
 import eu.wohlben.qits.eventstream.control.CanonicalJson;
 import eu.wohlben.qits.eventstream.control.EventFrame;
 import io.agroal.api.AgroalDataSource;
@@ -31,7 +33,8 @@ import org.junit.jupiter.api.Test;
  * Claims and turns from qits-projects' events, driven through the two durable listeners with frames
  * shaped as qits-projects publishes them (plus a field this copy does not know). The listeners are
  * called directly, without the library's claim on the event, so a redelivery here proves the
- * appliers' own idempotency.
+ * appliers' own idempotency. qits-idp is {@link StubCredentials}: the Git refs an agent's token may
+ * push follow its claims (qits-2705).
  */
 @QuarkusTest
 class ClaimsAndTurnsFromEventsTest {
@@ -40,6 +43,7 @@ class ClaimsAndTurnsFromEventsTest {
   static final UUID REVIEWER = UUID.fromString("d0000000-0000-4000-8000-000000000002");
   static final UUID EPIC = UUID.fromString("e0000000-0000-4000-8000-000000000001");
   static final UUID TASK = UUID.fromString("e0000000-0000-4000-8000-000000000002");
+  static final UUID TICKET = UUID.fromString("e0000000-0000-4000-8000-000000000003");
   static final Instant AT = Instant.parse("2026-11-23T10:00:00.123456Z");
   static final String DEVELOPER_SUBJECT = Fixtures.subject(Fixtures.PROJECT, "developer");
 
@@ -51,6 +55,8 @@ class ClaimsAndTurnsFromEventsTest {
 
   @Inject Fixtures fixtures;
 
+  StubCredentials idp;
+
   @Inject
   @DataSource("eventstream")
   AgroalDataSource eventstream;
@@ -61,19 +67,34 @@ class ClaimsAndTurnsFromEventsTest {
     Fixtures.recordEvents();
     fixtures.agent(DEVELOPER, "developer", 3);
     fixtures.agent(REVIEWER, "reviewer", 1);
+    idp = Fixtures.credentials(new StubCredentials());
   }
 
   // --- frames ----------------------------------------------------------------------------------
 
   static EventFrame assigned(
       UUID eventId, String assignee, String previous, String changedBy, String changedByName) {
+    return assigned(
+        eventId, EPIC, "EPIC", 2518, assignee, previous, changedBy, changedByName);
+  }
+
+  /** An assignment of any item of the project: {@code qits-<number>}, of {@code archetype}. */
+  static EventFrame assigned(
+      UUID eventId,
+      UUID entityId,
+      String archetype,
+      int number,
+      String assignee,
+      String previous,
+      String changedBy,
+      String changedByName) {
     Map<String, Object> p = new LinkedHashMap<>();
     p.put("eventId", eventId.toString());
-    p.put("entityId", EPIC.toString());
+    p.put("entityId", entityId.toString());
     p.put("projectId", Fixtures.PROJECT_ID.toString());
-    p.put("archetype", "EPIC");
-    p.put("number", 2518);
-    p.put("qualifiedId", "qits-2518");
+    p.put("archetype", archetype);
+    p.put("number", number);
+    p.put("qualifiedId", "qits-" + number);
     p.put("title", "Project agents");
     p.put("status", "IMPLEMENTING");
     p.put("assignee", assignee);
@@ -278,6 +299,88 @@ class ClaimsAndTurnsFromEventsTest {
             "dev"));
 
     assertEquals(List.of(), claims(DEVELOPER));
+  }
+
+  // --- the Git refs that follow the claims (qits-2705) ---------------------------------------
+
+  static final UUID DEVELOPER_TOKEN = UUID.nameUUIDFromBytes("token-developer".getBytes());
+  static final UUID REVIEWER_TOKEN = UUID.nameUUIDFromBytes("token-reviewer".getBytes());
+
+  static final List<String> TICKET_REFS =
+      List.of("refs/heads/ticket/qits-2705", "refs/heads/ticket/qits-2705-*");
+
+  @Test
+  void anAssignedTicketLetsTheAgentsTokenPushItsBranches() {
+    assignments.onFrame(assigned(UUID.randomUUID(), "developer", null, "person-sub", "Ben"));
+    EventFrame ticket =
+        assigned(UUID.randomUUID(), TICKET, "TICKET", 2705, "developer", null, "person-sub", "Ben");
+    assignments.onFrame(ticket);
+
+    assertEquals(
+        List.of(
+            "refs/heads/epic/qits-2518",
+            "refs/heads/epic/qits-2518-*",
+            "refs/heads/ticket/qits-2705",
+            "refs/heads/ticket/qits-2705-*"),
+        idp.refsOf(DEVELOPER_TOKEN),
+        "every open claim's branches, the epic's and the ticket's");
+    assertNull(idp.refsOf(REVIEWER_TOKEN), "the reviewer's claims did not move");
+
+    int replaces = idp.replaced.size();
+    assignments.onFrame(ticket);
+    assertEquals(replaces, idp.replaced.size(), "a redelivery moves no claim and replaces nothing");
+  }
+
+  @Test
+  void aTicketReassignedAwayLeavesTheOldAgentsToken() {
+    assignments.onFrame(
+        assigned(UUID.randomUUID(), TICKET, "TICKET", 2705, "developer", null, "person-sub", "Ben"));
+    assertEquals(TICKET_REFS, idp.refsOf(DEVELOPER_TOKEN));
+
+    assignments.onFrame(
+        assigned(
+            UUID.randomUUID(), TICKET, "TICKET", 2705, "reviewer", "developer", "person-sub", "Ben"));
+
+    assertEquals(List.of(), idp.refsOf(DEVELOPER_TOKEN), "the developer may push nothing again");
+    assertEquals(TICKET_REFS, idp.refsOf(REVIEWER_TOKEN));
+  }
+
+  @Test
+  void anAssignedEpicLetsTheTokenPushItsEpicBranches() {
+    assignments.onFrame(assigned(UUID.randomUUID(), "developer", null, "person-sub", "Ben"));
+
+    assertEquals(
+        List.of("refs/heads/epic/qits-2518", "refs/heads/epic/qits-2518-*"),
+        idp.refsOf(DEVELOPER_TOKEN));
+  }
+
+  @Test
+  void anAssignedTaskGrantsNoBranch() {
+    assignments.onFrame(
+        assigned(UUID.randomUUID(), TASK, "TASK", 2579, "developer", null, "person-sub", "Ben"));
+
+    assertEquals(1, claims(DEVELOPER).size(), "the task is claimed");
+    assertEquals(List.of(), idp.refsOf(DEVELOPER_TOKEN), "but its work rides its ticket's branch");
+  }
+
+  @Test
+  void aRefusingQitsIdpDoesNotFailTheEvent() {
+    idp.down = true;
+    assignments.onFrame(
+        assigned(UUID.randomUUID(), TICKET, "TICKET", 2705, "developer", null, "person-sub", "Ben"));
+    idp.down = false;
+    idp.replaceThrows = true;
+    QuarkusTransaction.requiringNew()
+        .run(
+            () -> {
+              enlistEventstream();
+              assignments.onFrame(
+                  assigned(UUID.randomUUID(), "developer", null, "person-sub", "Ben"));
+            });
+
+    assertEquals(2, claims(DEVELOPER).size(), "both claims committed regardless");
+    assertEquals(2, turns(DEVELOPER).size());
+    assertTrue(idp.replaced.isEmpty(), "qits-idp took nothing; the reconcile states it later");
   }
 
   // --- EntityCommented -------------------------------------------------------------------------

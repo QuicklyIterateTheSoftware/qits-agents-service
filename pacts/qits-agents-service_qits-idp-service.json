@@ -8,6 +8,74 @@
         "references": {
           "qits-call": {
             "app": "qits-idp-service",
+            "operationId": "replaceTokenGitRefs"
+          },
+          "qits-trigger": {
+            "app": "qits-agents-service",
+            "call": "AssignmentListener, RosterReconcile",
+            "kind": "call"
+          }
+        }
+      },
+      "description": "AssignmentListener, RosterReconcile: replaceTokenGitRefs",
+      "key": "d55b08e7",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "a commissioned token",
+          "params": {
+            "authorization": "Basic dGVzdC1icm9hZDp0ZXN0LWJyb2FkLXNlY3JldA==",
+            "callerClientId": "test-broad",
+            "token": "qits_tok_0000000000000000000000000000000000000000001",
+            "tokenId": "00000000-0000-4000-8000-000000000001"
+          }
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {
+            "gitRefs": [
+              "refs/heads/contract/run-1"
+            ]
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "generators": {
+          "header": {
+            "Authorization": {
+              "dataType": "RAW",
+              "expression": "${authorization}",
+              "type": "ProviderState"
+            }
+          },
+          "path": {
+            "dataType": "RAW",
+            "expression": "/idp/api/tokens/${tokenId}/git-refs",
+            "type": "ProviderState"
+          }
+        },
+        "headers": {
+          "Authorization": [
+            "Basic dGVzdC1icm9hZDp0ZXN0LWJyb2FkLXNlY3JldA=="
+          ],
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "method": "PUT",
+        "path": "/idp/api/tokens/00000000-0000-4000-8000-000000000001/git-refs"
+      },
+      "response": {
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "comments": {
+        "references": {
+          "qits-call": {
+            "app": "qits-idp-service",
             "operationId": "commissionToken"
           },
           "qits-trigger": {

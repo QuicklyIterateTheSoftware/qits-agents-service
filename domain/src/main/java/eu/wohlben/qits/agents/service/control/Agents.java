@@ -110,6 +110,28 @@ public class Agents {
         "agentId = ?1 and releasedAt is null order by claimedAt desc, id", agentId);
   }
 
+  /** The Git refs the agent's open claims grant its token ({@link AgentGitRefs}, qits-2705). */
+  @Transactional
+  public List<String> gitRefs(UUID agentId) {
+    return AgentGitRefs.of(claims(agentId, false));
+  }
+
+  /**
+   * The Git refs of every RUNNING agent of the project that holds a token, as its open claims grant
+   * them: what the reconcile states at qits-idp on every run (qits-2705).
+   */
+  @Transactional
+  public List<AgentGitRefs.Scope> gitScopes(UUID projectId) {
+    List<ProjectAgent> holding =
+        ProjectAgent.list(
+            "projectId = ?1 and desiredState = ?2 and tokenId is not null order by name",
+            projectId,
+            DesiredState.RUNNING);
+    return holding.stream()
+        .map(agent -> new AgentGitRefs.Scope(agent.id, agent.tokenId, gitRefs(agent.id)))
+        .toList();
+  }
+
   /** The agent's turns, oldest first; only the undelivered ones when {@code pending}. */
   @Transactional
   public List<AgentTurn> turns(UUID agentId, boolean pending) {

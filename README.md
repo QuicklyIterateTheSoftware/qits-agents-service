@@ -26,7 +26,7 @@ hands them, and `... gets no private-edge resolver: <why>` when it cannot.
 ```
  roster jars (ServiceLoader) ──▶ RosterReconcile ──▶ agent / agent_turn (RECOVERY)
                                    │  slug → id: qits-projects GET /projects/api/projects
-                                   │  credential: qits-idp POST/DELETE /idp/api/tokens
+                                   │  credential: qits-idp POST/PUT/DELETE /idp/api/tokens
                                    ▼
                               ProjectAgentChanged ──▶ qits-events
  runtime (qits-2519) ──launch / report / turns──▶ /agents/api/projects/{project}/agents/{name}/…
@@ -56,9 +56,15 @@ roster is then applied:
    never deleted; a retired agent's claims and turns stay for the record.
 4. A row without a token gets one: `POST {qits.agents.idp.url}/api/tokens`, HTTP Basic as this
    service's own client, `{"contextKind":"project-agent","contextId":"<projectSlug>-<name>",
-   "claims":{"project":"<projectId>"},"gitRefs":[]}`. qits-idp answers the fixed subject
+   "claims":{"project":"<projectId>"},"gitRefs":[<refs>]}`. qits-idp answers the fixed subject
    `tok-project-agent-<contextId>` (`tok-project-agent-qits-developer`); commissioning again
    rotates the value. Revocation is `DELETE {idp}/api/tokens/{tokenId}`.
+5. **The Git refs follow the claims** (qits-2705). `<refs>` is what the agent's open claims grant
+   (`control/AgentGitRefs`): a TICKET `refs/heads/ticket/<qid>` and `refs/heads/ticket/<qid>-*`, an
+   EPIC the same under `epic/`, anything else nothing; sorted, at most 500. Every run then replaces
+   the list of every other RUNNING agent holding a token, `PUT {idp}/api/tokens/{tokenId}/git-refs`
+   `{"gitRefs":[…]}` — the backfill, and the retry of a replace an assignment could not make (a
+   refused one leaves the run incomplete). Nothing is stored for it: the replace is idempotent.
 
 Every write that moves a generation, a desired state or a reported state publishes
 `ProjectAgentChanged` from `control/Agents`, in the row's transaction. qits-idp and qits-projects
@@ -161,7 +167,10 @@ Two durable consumptions (`bus/`), both consuming from now (no backfill), applie
   matches A and the new one does not: A's open claim on the item is released (`released_at` =
   `assignedAt`, `released_by` = `changedBy`). New assignee matches a RUNNING agent B: B claims the
   item and, unless `changedBy` is B's own subject, gets an ASSIGNED turn
-  `(<changedByName> has assigned <qualifiedId> to you)`. A RETIRED agent gets neither.
+  `(<changedByName> has assigned <qualifiedId> to you)`. A RETIRED agent gets neither. Once the
+  claims have committed, every agent whose open claims moved and that holds a token gets its Git
+  refs replaced at qits-idp (above, qits-2705); a failed replace is a WARN, the event is consumed
+  anyway, and the next reconcile states the list again.
 - **`EntityCommented`** (consumer `agents-comments`, `control/CommentNotices`). Every RUNNING agent
   holding `rootEntityId` (else `entityId`) open, and not the comment's `changedBy`, gets a
   COMMENTED turn `(<who> just commented on <the claim's qualifiedId>)`; `who` is

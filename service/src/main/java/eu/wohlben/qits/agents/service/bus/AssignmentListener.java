@@ -1,6 +1,7 @@
 package eu.wohlben.qits.agents.service.bus;
 
 import eu.wohlben.qits.agents.service.control.Assignments;
+import eu.wohlben.qits.agents.service.control.GitRefSync;
 import eu.wohlben.qits.agents.service.events.EntityAssigned;
 import eu.wohlben.qits.eventstream.QitsDurableEventListener;
 import eu.wohlben.qits.eventstream.control.CanonicalJson;
@@ -18,6 +19,11 @@ import org.jboss.logging.Logger;
  * bytes would fail on every offer — so it is a WARN and a return, never a wedged watermark. A
  * database failure throws, rolls the claim back and leaves the event owed, which is right: a later
  * offer can do better.
+ *
+ * <p>Once {@link Assignments#assigned} has committed the claims (its own transaction), the Git refs
+ * of every agent whose claims moved are handed to qits-idp ({@link GitRefSync}, qits-2705). That
+ * never throws: a qits-idp failure is a WARN, the event is still consumed, and the next roster
+ * reconcile states the list again.
  */
 @ApplicationScoped
 public class AssignmentListener implements QitsDurableEventListener {
@@ -33,6 +39,8 @@ public class AssignmentListener implements QitsDurableEventListener {
   static final String SIGNATURE = "EntityAssigned";
 
   @Inject Assignments assignments;
+
+  @Inject GitRefSync gitRefs;
 
   @Override
   public String consumerId() {
@@ -61,6 +69,6 @@ public class AssignmentListener implements QitsDurableEventListener {
           frame.name(), frame.id(), unreadable.toString());
       return;
     }
-    assignments.assigned(event);
+    gitRefs.replace(assignments.assigned(event));
   }
 }

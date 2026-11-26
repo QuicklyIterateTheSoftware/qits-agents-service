@@ -24,6 +24,7 @@ import eu.wohlben.qits.agents.service.support.StubDirectory;
 import eu.wohlben.qits.eventstream.QitsEvent;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,7 +34,8 @@ import org.junit.jupiter.api.Test;
  * The roster reconcile's rules, driven directly with rosters of the suite's own against a stubbed
  * qits-projects and qits-idp: first sight, an unchanged roster (no write at all), a changed
  * declaration (a generation and a RECOVERY turn), a removed agent (RETIRED, token revoked), one
- * declared again, an unknown project, an unreachable one, and a broken roster.
+ * declared again, an unknown project, an unreachable one, and a broken roster; and the Git refs
+ * each token may push, stated at commission and replaced by every run (qits-2705).
  */
 @QuarkusTest
 class RosterReconcileTest {
@@ -111,6 +113,8 @@ class RosterReconcileTest {
     assertEquals(2, idp.commissions.size());
     assertEquals("qits-developer", idp.commissions.get(0).contextId());
     assertEquals(Fixtures.PROJECT_ID, idp.commissions.get(0).projectId());
+    assertEquals(List.of(), idp.commissions.get(0).gitRefs(), "a new agent holds nothing yet");
+    assertEquals(List.of(), idp.replaced, "a token commissioned this run already states its refs");
     assertEquals(List.of(), fixtures.turns(developer.id), "a first start has no recovery");
     assertEquals(2, changed().size());
     assertEquals("developer", changed().get(0).agentName());
@@ -148,6 +152,66 @@ class RosterReconcileTest {
     assertNotNull(row("developer").tokenId);
     assertEquals(1, row("developer").generation);
     assertEquals(List.of(), changed(), "a token is no generation");
+  }
+
+  static final Instant CLAIMED = Instant.parse("2026-11-26T09:00:00Z");
+
+  @Test
+  void aCommissionStatesTheRefsOfTheAgentsOpenClaims() {
+    idp.down = true;
+    reconcile.reconcile(List.of(qits(DEVELOPER)));
+    UUID developer = row("developer").id;
+    fixtures.claim(developer, UUID.randomUUID(), "qits-2705", "TICKET", CLAIMED, null);
+    fixtures.claim(developer, UUID.randomUUID(), "qits-2518", "EPIC", CLAIMED, CLAIMED);
+    fixtures.claim(developer, UUID.randomUUID(), "qits-2706", "TASK", CLAIMED, null);
+
+    idp.down = false;
+    assertTrue(reconcile.reconcile(List.of(qits(DEVELOPER))).complete());
+
+    assertEquals(1, idp.commissions.size());
+    assertEquals(
+        List.of("refs/heads/ticket/qits-2705", "refs/heads/ticket/qits-2705-*"),
+        idp.commissions.get(0).gitRefs(),
+        "the open ticket's branches; neither the released epic nor the task");
+    assertEquals(List.of(), idp.replaced);
+  }
+
+  @Test
+  void everyRunStatesTheRefsOfEveryRunningAgentsExistingClaims() {
+    reconcile.reconcile(List.of(qits(DEVELOPER, REVIEWER)));
+    ProjectAgent before = row("developer");
+    fixtures.claim(before.id, UUID.randomUUID(), "qits-2518", "EPIC", CLAIMED, null);
+    events.clear();
+
+    RosterReconcile.Outcome outcome = reconcile.reconcile(List.of(qits(DEVELOPER, REVIEWER)));
+
+    assertTrue(outcome.complete());
+    assertEquals(
+        List.of("refs/heads/epic/qits-2518", "refs/heads/epic/qits-2518-*"),
+        idp.refsOf(before.tokenId),
+        "claims taken before the refs followed them are backfilled");
+    assertEquals(List.of(), idp.refsOf(row("reviewer").tokenId));
+    assertEquals(before.updatedAt, row("developer").updatedAt, "and no row is written for it");
+    assertEquals(List.of(), changed());
+    assertEquals(2, idp.commissions.size(), "no second commission");
+
+    idp.down = true;
+    assertFalse(
+        reconcile.reconcile(List.of(qits(DEVELOPER, REVIEWER))).complete(),
+        "a replace qits-idp did not take is retried by the next run");
+  }
+
+  @Test
+  void aRetiredAgentsRefsAreNotReplaced() {
+    reconcile.reconcile(List.of(qits(DEVELOPER, REVIEWER)));
+    UUID reviewerToken = row("reviewer").tokenId;
+    idp.replaced.clear();
+
+    reconcile.reconcile(List.of(qits(DEVELOPER)));
+
+    assertEquals(List.of(reviewerToken), idp.revoked);
+    assertNull(idp.refsOf(reviewerToken), "a retired agent's token is revoked, not rescoped");
+    assertNotNull(idp.refsOf(row("developer").tokenId));
   }
 
   @Test

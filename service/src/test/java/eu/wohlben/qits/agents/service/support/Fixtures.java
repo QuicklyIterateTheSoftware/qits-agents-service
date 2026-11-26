@@ -142,12 +142,24 @@ public class Fixtures {
   @Transactional
   public AgentClaim claim(
       UUID agentId, UUID entityId, String qualifiedId, Instant claimedAt, Instant releasedAt) {
+    return claim(agentId, entityId, qualifiedId, "TASK", claimedAt, releasedAt);
+  }
+
+  /** A claim on an item of {@code archetype}; released when {@code releasedAt} is given. */
+  @Transactional
+  public AgentClaim claim(
+      UUID agentId,
+      UUID entityId,
+      String qualifiedId,
+      String archetype,
+      Instant claimedAt,
+      Instant releasedAt) {
     AgentClaim claim = new AgentClaim();
     claim.id = UUID.randomUUID();
     claim.agentId = agentId;
     claim.entityId = entityId;
     claim.qualifiedId = qualifiedId;
-    claim.archetype = "TASK";
+    claim.archetype = archetype;
     claim.title = "Work item " + qualifiedId;
     claim.claimedBy = "a-person";
     claim.claimedAt = claimedAt;

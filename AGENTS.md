@@ -102,11 +102,12 @@ A new door needs a golden master in the same commit: the release gate fails any 
 `docs/openapi.yml` that `golden-masters/index.json` does not cover. A new provider state needs its
 `@State` method on `ConsumerPactVerificationTest` (`ProviderStateCoverageTest`).
 
-**A pending pact row.** `IdpPactTest.COMMISSION` names qits-idp's state `a project agent's token
-being commissioned`, which no published `qits-idp-golden-masters` records yet (qits-2559). Until the
-pin moves past one that does, the row is left out of the pact file, `IdpTokensPactTest` skips it,
-and `OutboundCallGuardTest` accepts `IdpTokensApi.commissionToken` by its operationId. When the
-bump lands, regenerate the pact with `-Dgolden.update=true`.
+**The idp token rows' bodies are qits-idp's literals.** A request body comes from the recording,
+and only its `{param}`s are matched by type. `IdpPactTest.COMMISSION` (`a project agent's token
+being commissioned`) records `"gitRefs":[]`, so the row pins the commission of an agent holding no
+claim; `REPLACE_GIT_REFS` (`a commissioned token`) records `{"gitRefs":["refs/heads/contract/run-1"]}`,
+and `IdpTokensPactTest` sends exactly that. A commission stating a non-empty list needs a qits-idp
+state that records the list as a param (qits-2705).
 
 ## The userflow catalogue
 

@@ -3,6 +3,7 @@ package eu.wohlben.qits.agents.service.idp;
 import eu.wohlben.qits.agents.service.control.AgentCredentials;
 import eu.wohlben.qits.agents.service.idp.IdpTokensApi.Commission;
 import eu.wohlben.qits.agents.service.idp.IdpTokensApi.Commissioned;
+import eu.wohlben.qits.agents.service.idp.IdpTokensApi.GitRefsReplacement;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.ProcessingException;
@@ -22,12 +23,15 @@ import org.jboss.logging.Logger;
  * {@code IdpTokens} commissions its desks' — HTTP Basic with this service's own {@code qits} client
  * id and secret (only a static {@code qits:system} client may commission). Kind {@value
  * AgentCredentials#KIND}, context {@code <projectSlug>-<name>}, claims {@code {project:
- * <projectId>}}, {@code gitRefs: []}: the agent may push nothing through this credential. qits-idp
- * gives the token the fixed subject {@code tok-project-agent-<contextId>}, and commissioning the same
- * context again replaces the value (rotation).
+ * <projectId>}}, and the {@code gitRefs} the agent's open claims grant: it may push its assigned
+ * tickets' and epics' branches, and the list is replaced ({@code PUT /api/tokens/{tokenId}/git-refs})
+ * as its claims move (qits-2705). qits-idp gives the token the fixed subject {@code
+ * tok-project-agent-<contextId>}, and commissioning the same context again replaces the value
+ * (rotation).
  *
  * <p>Not wired — the {@code qits} client off, or no secret (a clone-alone suite) — every commission
- * is {@link AgentCredentials.Refused} and every revoke false, which the reconcile retries.
+ * is {@link AgentCredentials.Refused} and every revoke and replace false, which the reconcile
+ * retries.
  */
 @ApplicationScoped
 public class IdpAgentCredentials implements AgentCredentials {
@@ -59,7 +63,7 @@ public class IdpAgentCredentials implements AgentCredentials {
   }
 
   @Override
-  public Issued commission(String contextId, UUID projectId) {
+  public Issued commission(String contextId, UUID projectId, List<String> gitRefs) {
     String basic =
         basic().orElseThrow(() -> new Refused("this service has no idp client wired"));
     Commissioned answer;
@@ -67,7 +71,8 @@ public class IdpAgentCredentials implements AgentCredentials {
       answer =
           tokens.commissionToken(
               basic,
-              new Commission(KIND, contextId, Map.of("project", projectId.toString()), List.of()));
+              new Commission(
+                  KIND, contextId, Map.of("project", projectId.toString()), List.copyOf(gitRefs)));
     } catch (WebApplicationException refused) {
       throw new Refused(
           "qits-idp answered "
@@ -105,6 +110,32 @@ public class IdpAgentCredentials implements AgentCredentials {
     } catch (ProcessingException unreachable) {
       LOG.warnf(
           "qits-idp cannot be reached to revoke token %s; the next run retries: %s",
+          tokenId, unreachable.getMessage());
+    }
+    return false;
+  }
+
+  @Override
+  public boolean replaceGitRefs(UUID tokenId, List<String> gitRefs) {
+    Optional<String> basic = basic();
+    if (basic.isEmpty()) {
+      LOG.warnf(
+          "the git refs of token %s are not replaced: this service has no idp client wired",
+          tokenId);
+      return false;
+    }
+    try {
+      tokens.replaceTokenGitRefs(
+          basic.get(), tokenId.toString(), new GitRefsReplacement(List.copyOf(gitRefs)));
+      return true;
+    } catch (WebApplicationException refused) {
+      LOG.warnf(
+          "qits-idp answered %d replacing the git refs of token %s; the next reconcile retries",
+          refused.getResponse().getStatus(), tokenId);
+    } catch (ProcessingException unreachable) {
+      LOG.warnf(
+          "qits-idp cannot be reached to replace the git refs of token %s; the next reconcile"
+              + " retries: %s",
           tokenId, unreachable.getMessage());
     }
     return false;

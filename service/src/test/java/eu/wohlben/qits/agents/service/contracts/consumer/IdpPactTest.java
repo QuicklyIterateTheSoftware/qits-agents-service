@@ -29,18 +29,20 @@ import org.junit.jupiter.api.Test;
  *   <li>the client-credentials mint of the named client {@code qits}, spent by qits-eventstream and
  *       the reconcile's qits-projects read ({@code IdpTokenMintPactTest} runs it through the real
  *       oidc client);
- *   <li>the agents' credentials ({@code IdpTokensPactTest} runs both through the real REST client):
- *       {@code commissionToken} of kind {@code project-agent} and {@code deleteToken}, HTTP Basic as
- *       this service's own client.
+ *   <li>the agents' credentials ({@code IdpTokensPactTest} runs each through the real REST
+ *       client): {@code commissionToken} of kind {@code project-agent}, {@code replaceTokenGitRefs}
+ *       (qits-2705) and {@code deleteToken}, HTTP Basic as this service's own client.
  * </ul>
  *
- * <p><b>{@value #A_PROJECT_AGENTS_TOKEN_BEING_COMMISSIONED} is PENDING</b>: qits-idp records that
- * state with the {@code project-agent} kind (qits-2559), and no published {@code
- * qits-idp-golden-masters} carries it yet. Its row is declared here and left out of the pact file
- * until the pin moves to a version that records it; the state's params are {@code authorization}
- * (the caller's Basic pair), {@code contextId} ({@code qits-developer}) and {@code projectId}, and
- * the body it records is {@code {"contextKind":"project-agent","contextId":"{contextId}",
- * "claims":{"project":"{projectId}"},"gitRefs":[]}}.
+ * <p><b>The commission states an empty list.</b> qits-idp records {@value
+ * #A_PROJECT_AGENTS_TOKEN_BEING_COMMISSIONED} (since {@code qits-idp-golden-masters}
+ * 2026.1125.71255) with the literal body {@code {"contextKind":"project-agent","contextId":
+ * "{contextId}","claims":{"project":"{projectId}"},"gitRefs":[]}}, so the row pins the commission of
+ * an agent that holds no claim yet. A commission stating the refs of open claims needs a qits-idp
+ * state whose body carries them as a param ({@code "gitRefs":["{gitRef}","{gitRef}-*"]}, as its
+ * workspace-agent state does); until one is recorded the non-empty list reaches qits-idp through
+ * {@link #REPLACE_GIT_REFS}, whose recorded body is the literal {@code
+ * {"gitRefs":["refs/heads/contract/run-1"]}}.
  *
  * <p>The pact is {@code pacts/qits-agents-service_qits-idp-service.json}; {@code
  * -Dgolden.update=true} rewrites it.
@@ -94,13 +96,26 @@ class IdpPactTest {
   /** The qits-idp state that records a live token its owner deletes. */
   static final String A_COMMISSIONED_TOKEN = "a commissioned token";
 
+  /**
+   * The Git refs of an agent's token follow its claims (qits-2705): replaced after an assignment and
+   * by every reconcile. The token is one this service owns, as {@value #A_COMMISSIONED_TOKEN}'s
+   * caller owns its token.
+   */
+  static final GoldenInteraction REPLACE_GIT_REFS =
+      GoldenInteraction.of(
+              Trigger.of("call", "call", "AssignmentListener, RosterReconcile"),
+              A_COMMISSIONED_TOKEN,
+              "replaceTokenGitRefs")
+          .header("Authorization", "{authorization}");
+
   /** The reconcile revokes a RETIRED agent's token. */
   static final GoldenInteraction DELETE =
       GoldenInteraction.of(RECONCILE, A_COMMISSIONED_TOKEN, "deleteToken")
           .header("Authorization", "{authorization}");
 
   static final ConsumerPact PACT =
-      ConsumerPact.of(CONSUMER, IDP, MINT, DISCOVERY, JWKS, COMMISSION, DELETE);
+      ConsumerPact.of(
+          CONSUMER, IDP, MINT, DISCOVERY, JWKS, COMMISSION, REPLACE_GIT_REFS, DELETE);
 
   private static final ObjectMapper JSON = new ObjectMapper();
 

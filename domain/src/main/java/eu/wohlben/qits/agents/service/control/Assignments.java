@@ -11,6 +11,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -33,8 +34,13 @@ import org.jboss.logging.Logger;
  * for one event ({@code agent_turn_source_uq}). Each is checked by a read first rather than left to
  * the unique index, whose violation would poison the claiming transaction.
  *
- * <p>Runs inside the durable consumption's transaction ({@code REQUIRED}), so the claim, the turn
- * and the consumer's claim on the event commit together.
+ * <p>Runs in its own transaction ({@code REQUIRES_NEW}, below), so the claim and the turn commit
+ * together, before the consumer's claim on the event.
+ *
+ * <p><b>The Git refs follow</b> (qits-2705): {@link #assigned} answers, for every agent whose open
+ * claims it moved and that holds a token, the refs those claims now grant ({@link AgentGitRefs}).
+ * It never calls qits-idp itself — that happens after this transaction commits, through {@link
+ * GitRefSync}, so a slow or refusing qits-idp can neither hold nor roll back the claims.
  */
 @ApplicationScoped
 public class Assignments {
@@ -43,33 +49,50 @@ public class Assignments {
 
   @Inject Agents agents;
 
-  /** Applies one assignment change. A payload that names no usable item is logged and ignored. */
+  /**
+   * Applies one assignment change. A payload that names no usable item is logged and ignored.
+   *
+   * @return the Git refs of every agent holding a token whose open claims this event moved, to be
+   *     handed to qits-idp once this transaction has committed; empty when none moved
+   */
   // Its own transaction on the agents datasource, never the listener's: qits-eventstream runs a
   // durable listener inside its claiming transaction on the eventstream outbox, and joining that
   // from a second non-XA datasource fails every event ("Exception in association of connection to
   // existing transaction", 2026.1124.52642). A redelivery after a failed claim commit is harmless:
   // the open-claim check and agent_turn_source_uq make the effect idempotent.
   @Transactional(Transactional.TxType.REQUIRES_NEW)
-  public void assigned(EntityAssigned event) {
+  public List<AgentGitRefs.Scope> assigned(EntityAssigned event) {
     UUID entityId = Ids.uuid(event.entityId());
     if (entityId == null || event.projectId() == null) {
       LOG.warnf(
           "EntityAssigned %s names no item or project (%s in %s); nothing to claim",
           event.eventId(), event.entityId(), event.projectId());
-      return;
+      return List.of();
     }
     Instant at = Ids.micros(event.assignedAt());
     List<ProjectAgent> roster = agents.ofProject(event.projectId());
+    List<AgentGitRefs.Scope> moved = new ArrayList<>();
     for (ProjectAgent agent : roster) {
       boolean was = matches(agent, event.previousAssignee());
       boolean is = matches(agent, event.assignee());
+      boolean changed = false;
       if (was && !is) {
-        release(agent, entityId, at, event.changedBy());
+        changed |= release(agent, entityId, at, event.changedBy());
       }
       if (is) {
-        claim(agent, entityId, at, event);
+        changed |= claim(agent, entityId, at, event);
+      }
+      if (changed && agent.tokenId != null) {
+        moved.add(
+            new AgentGitRefs.Scope(
+                agent.id,
+                agent.tokenId,
+                AgentGitRefs.of(
+                    AgentClaim.<AgentClaim>list(
+                        "agentId = ?1 and releasedAt is null", agent.id))));
       }
     }
+    return moved;
   }
 
   /** Whether {@code value} names the agent: its name, or its token subject. */
@@ -80,23 +103,26 @@ public class Assignments {
     return value.equals(agent.name) || value.equals(agent.tokenSubject);
   }
 
-  private void release(ProjectAgent agent, UUID entityId, Instant at, String by) {
+  /** Releases the agent's open claim on the item; true when there was one. */
+  private boolean release(ProjectAgent agent, UUID entityId, Instant at, String by) {
     AgentClaim open =
         AgentClaim.<AgentClaim>find(
                 "agentId = ?1 and entityId = ?2 and releasedAt is null", agent.id, entityId)
             .firstResult();
     if (open == null) {
-      return;
+      return false;
     }
     open.releasedAt = at;
     open.releasedBy = by == null ? "unknown" : by;
     LOG.infof(
         "agent %s/%s released %s (%s)", agent.projectSlug, agent.name, open.qualifiedId, by);
+    return true;
   }
 
-  private void claim(ProjectAgent agent, UUID entityId, Instant at, EntityAssigned event) {
+  /** Opens the agent's claim on the item (and its turn); true when a claim was opened. */
+  private boolean claim(ProjectAgent agent, UUID entityId, Instant at, EntityAssigned event) {
     if (agent.desiredState != DesiredState.RUNNING) {
-      return;
+      return false;
     }
     long already =
         AgentClaim.count(
@@ -105,7 +131,7 @@ public class Assignments {
             entityId,
             at);
     if (already > 0) {
-      return;
+      return false;
     }
     String qualifiedId =
         event.qualifiedId() != null && !event.qualifiedId().isBlank()
@@ -125,7 +151,7 @@ public class Assignments {
         "agent %s/%s claimed %s (%s)",
         agent.projectSlug, agent.name, qualifiedId, event.changedBy());
     if (event.changedBy() != null && event.changedBy().equals(agent.tokenSubject)) {
-      return;
+      return true;
     }
     String who =
         event.changedByName() != null && !event.changedByName().isBlank()
@@ -136,6 +162,7 @@ public class Assignments {
         TurnKind.ASSIGNED,
         "(" + who + " has assigned " + qualifiedId + " to you)",
         event.eventId());
+    return true;
   }
 
   /** Small shared helpers of the two event appliers. */

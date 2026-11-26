@@ -77,6 +77,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
       ProjectsApi.Project.class,
       IdpTokensApi.Commission.class,
       IdpTokensApi.Commissioned.class,
+      IdpTokensApi.GitRefsReplacement.class,
       SystemLeasesApi.LeaseRequest.class,
       SystemLeasesApi.SpecRequest.class,
       SystemLeasesApi.LeaseSpec.class,

@@ -10,6 +10,7 @@ import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,6 +33,13 @@ import org.jboss.logging.Logger;
  * none, and a RETIRED agent's token is revoked; both calls to qits-idp happen outside the row's
  * transaction, and a failed one is retried by the next run.
  *
+ * <p><b>The Git refs</b> (qits-2705): a commission states the refs the agent's open claims grant
+ * ({@link AgentGitRefs}), and every run then replaces the list of every other RUNNING agent holding
+ * a token with its current one ({@link GitRefSync}) — the backfill for tokens commissioned before
+ * the refs followed the claims, and the retry of a replace an assignment could not make. Nothing is
+ * stored about it: qits-idp's replace is idempotent, and a run every ten minutes asks it once per
+ * agent. A refused replace makes the run incomplete.
+ *
  * <p><b>Idempotent</b>: a second run over the same rosters writes nothing at all. That is what lets
  * {@code RosterReconcileTrigger} re-run it periodically, healing a boot that could not reach
  * qits-projects or qits-idp. {@code qits.agents.roster-reconcile-at-boot} turns the boot run off
@@ -48,6 +56,8 @@ public class RosterReconcile {
   @Inject ProjectDirectory directory;
 
   @Inject AgentCredentials credentials;
+
+  @Inject GitRefSync gitRefs;
 
   @ConfigProperty(name = "qits.agents.roster-reconcile-at-boot")
   boolean atBoot;
@@ -123,6 +133,7 @@ public class RosterReconcile {
   private boolean apply(AgentRoster roster, UUID projectId) {
     String slug = roster.project();
     boolean complete = true;
+    Set<UUID> commissioned = new HashSet<>();
     for (AgentDeclaration declaration : roster.agents()) {
       String hash = AgentRosterDocument.hash(declaration);
       Agents.Declaration declared;
@@ -138,7 +149,11 @@ public class RosterReconcile {
         continue;
       }
       if (declared.needsToken()) {
-        complete &= commission(declared.agentId(), slug, declaration.name(), projectId);
+        boolean issued = commission(declared.agentId(), slug, declaration.name(), projectId);
+        if (issued) {
+          commissioned.add(declared.agentId());
+        }
+        complete &= issued;
       }
     }
     Set<String> names =
@@ -152,13 +167,20 @@ public class RosterReconcile {
         complete = false;
       }
     }
+    // A token commissioned above already states its refs.
+    complete &=
+        gitRefs.replace(
+            agents.gitScopes(projectId).stream()
+                .filter(scope -> !commissioned.contains(scope.agentId()))
+                .toList());
     return complete;
   }
 
   private boolean commission(UUID agentId, String slug, String name, UUID projectId) {
     String contextId = slug + "-" + name;
     try {
-      AgentCredentials.Issued issued = credentials.commission(contextId, projectId);
+      AgentCredentials.Issued issued =
+          credentials.commission(contextId, projectId, agents.gitRefs(agentId));
       agents.storeToken(agentId, issued);
       LOG.infof(
           "agent %s/%s: token %s commissioned as %s", slug, name, issued.tokenId(), issued.subject());
