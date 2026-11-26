@@ -212,6 +212,37 @@ class EvaluationReportTest {
   }
 
   @Test
+  void aMessageNamingAnItemTheReportDoesNotListIsTheProjectAgentsOverhead() {
+    // qits-2722: a research subagent's prompt named qits-2511, an item it only read about.
+    Report r =
+        Evaluation.compute(
+            "qits",
+            new Evaluation.Ledger(
+                List.of(item("qits-4", "TICKET", null, h(2)), item("qits-6", "TICKET", h(1), null)),
+                // transitions, blocks, requests, request states, runs, activity, exits, waits, usage
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(),
+                List.of(
+                    message(DEVELOPER, "qits-4", OPUS, 10, 20, 30, 40, h(3)),
+                    message(DEVELOPER, "qits-2511", OPUS, 1, 2, 3, 4, h(3)), // listed nowhere
+                    message(DEVELOPER, "qits-6", OPUS, 100, 0, 0, 0, h(3)), // the other model's item
+                    message(DEVELOPER, null, OPUS, 5, 6, 7, 8, h(1)),
+                    message(DEVELOPER, "qits-2511", OPUS, 900, 900, 900, 900, h(60))), // after
+                List.of(),
+                Map.of(DEVELOPER, "developer")),
+            T,
+            UNTIL,
+            UNTIL.plusSeconds(86400));
+    ModelFigures pa =
+        r.models().stream().filter(m -> m.model().equals("PROJECT_AGENT")).findFirst().orElseThrow();
+    assertEquals(List.of(new Tokens(OPUS, 1, 10, 20, 30, 40)), pa.tokens());
+    assertEquals(List.of(new Tokens(OPUS, 2, 6, 8, 10, 12)), pa.overheadTokens());
+    ModelFigures ws =
+        r.models().stream().filter(m -> m.model().equals("WORKSPACE")).findFirst().orElseThrow();
+    assertEquals(List.of(new Tokens(OPUS, 1, 100, 0, 0, 0)), ws.tokens(), "qits-6 keeps its own");
+  }
+
+  @Test
   void theProjectAgentIsIdleOnlyWhileItHoldsAClaim() {
     ModelFigures pa = model("PROJECT_AGENT");
     assertEquals(7200, pa.busySeconds());

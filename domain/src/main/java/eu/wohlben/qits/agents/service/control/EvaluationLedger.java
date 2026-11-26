@@ -94,19 +94,26 @@ public class EvaluationLedger {
   // --- the project agent's own facts ------------------------------------------------------------
 
   /**
-   * Records a project agent's transcript usage, each message once per session: a message already
-   * recorded is skipped, so the daemon may resend a batch. Answers how many were new.
+   * Records a project agent's transcript usage, each message once per session, so the daemon may
+   * resend a batch. A resent message's tokens, model and time are never rewritten, but a resend
+   * that names a work item re-attributes it (qits-2722): a daemon that attributed it to none, or to
+   * another item, is corrected by the next one's rescan. A resend naming none never clears an
+   * item. Answers how many messages were new or re-attributed.
    */
   @Transactional
   public int usage(UUID agentId, String sessionId, List<UsageMessage> messages) {
     int inserted = 0;
     for (UsageMessage message : messages) {
       inserted +=
-          sql("insert into {h-schema}eval_usage_message (session_id, message_id, agent_id,"
+          sql("insert into {h-schema}eval_usage_message as u (session_id, message_id, agent_id,"
                   + " work_qualified_id, claude_model, input_tokens, output_tokens,"
                   + " cache_creation_tokens, cache_read_tokens, at)"
                   + " values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)"
-                  + " on conflict (session_id, message_id) do nothing",
+                  + " on conflict (session_id, message_id) do update"
+                  + " set work_qualified_id = excluded.work_qualified_id"
+                  + " where excluded.work_qualified_id is not null and"
+                  + " u.work_qualified_id is distinct from"
+                  + " excluded.work_qualified_id",
               sessionId,
               message.messageId(),
               agentId,
@@ -119,7 +126,7 @@ public class EvaluationLedger {
               micros(message.at()));
     }
     LOG.debugf(
-        "usage of agent %s session %s: %d of %d messages new",
+        "usage of agent %s session %s: %d of %d messages new or re-attributed",
         agentId, sessionId, inserted, messages.size());
     return inserted;
   }
