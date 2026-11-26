@@ -56,18 +56,18 @@
         <qits.db-core.version>2026.1107.191249</qits.db-core.version>
         <qits.arch-rules.version>2026.1113.14706</qits.arch-rules.version>
         <!-- Machine identity: the rollout gate every sibling shares. -->
-        <qits.auth-core.version>2026.1125.60148</qits.auth-core.version>
+        <qits.auth-core.version>2026.1126.172511</qits.auth-core.version>
         <!-- Caller stamping on inbound and outbound HTTP. -->
-        <qits.http-core.version>2026.1125.110206</qits.http-core.version>
+        <qits.http-core.version>2026.1126.172511</qits.http-core.version>
         <!-- OTLP export to qits-observability through the edge, with the `qits` client's bearer. -->
         <qits.telemetry-core.version>2026.1106.507</qits.telemetry-core.version>
         <!-- The platform CA's anchor bundle (qits-2636): TrustAnchors.envEntry() gives the PEM for
              QITS_TRUST_ANCHORS on an agent's container, polled with the `qits` client's bearer like
              qits-telemetry-core. First adoption (qits-2632): no maintenance bump adds it. -->
-        <qits.trust-core.version>2026.1125.110206</qits.trust-core.version>
+        <qits.trust-core.version>2026.1126.172511</qits.trust-core.version>
         <!-- The event bus client: ProjectAgentChanged is published through it. qits-eventstream-
              contracts, its pact kit, always rides the same version. -->
-        <qits.eventstream.version>2026.1125.142425</qits.eventstream.version>
+        <qits.eventstream.version>2026.1126.192104</qits.eventstream.version>
         <!-- The user-story framework and the recording service mocks (test scope): the userflow
              catalogue (stories/**IT) boots the PACKAGED service against idp.MockIdp and emits its
              documentation under service/target/userstories/, which the java-service release recipe
@@ -86,7 +86,7 @@
              runtime/AgentSpecs puts in every AGENT lease. ONE PROPERTY REFERENCE, so qits-
              maintenance's bump train can move it; pinned here by hand once (a first adoption gets no
              bump), the train's afterwards. -->
-        <qits.agents-daemon-protocol.version>2026.1126.123658</qits.agents-daemon-protocol.version>
+        <qits.agents-daemon-protocol.version>2026.1126.173838</qits.agents-daemon-protocol.version>
         <qits.maven.repository.url>https://registry.qits.wohlben.eu/artifacts/maven/maven</qits.maven.repository.url>
         <!-- Real PostgreSQL binaries as a maven dependency, spawned by the suite: a clone tests
              green with NO DOCKER, so no Testcontainers and no dev services. -->
